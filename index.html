@@ -445,8 +445,7 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 function esc(s){return (""+s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
 function pct(x,n){return 100*x/n;}
 function fmt(p){return p>=99.95?"100":(p<0.05&&p>0?"<0.1":p.toFixed(1));}
-function flag(n){return '<span class="flag">'+(FLAG[n]||"")+'</span>';}
-let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1900);}
+function flag(n){var e=FLAG[n]||"";if(!e)return"";var cp=[];for(var ch of e){var c=ch.codePointAt(0);if(c!==0xFE0F)cp.push(c.toString(16));}return '<img class="flag" loading="lazy" style="height:14px;width:auto;vertical-align:-2px" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/svg/'+cp.join("-")+'.svg">';}let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1900);}
 const METRICS=[["champ","Win"],["final","Final"],["sf","Semis"],["qf","Quarters"],["r16","Last 32→16"],["qualify","Qualify"],["p1","Win group"]];
 let curMetric="champ";
 
