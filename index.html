@@ -420,6 +420,7 @@ function simTournament(acc){
   const SF=[[101,97,98],[102,99,100]];
   for(const [id,x,y] of SF){m[id]={a:m[x].w,b:m[y].w};m[id].w=applyKO(id,m[id].a,m[id].b);}
   m[104]={a:m[101].w,b:m[102].w};m[104].w=applyKO(104,m[104].a,m[104].b);
+  for(const id of [89,90,91,92,93,94,95,96,97,98,99,100,101,102,104]){const M=m[id],sf=acc.slot[id];if(sf){sf.a[M.a.name]=(sf.a[M.a.name]||0)+1;sf.b[M.b.name]=(sf.b[M.b.name]||0)+1;}}
   for(const g of GROUPS){acc.t[W[g].name].qual++;acc.t[R[g].name].qual++;}
   for(const b of best8)acc.t[b.name].qual++;
   for(const id of [89,90,91,92,93,94,95,96]){acc.t[m[id].a.name].r16++;acc.t[m[id].b.name].r16++;}
@@ -428,7 +429,7 @@ function simTournament(acc){
   acc.t[m[104].a.name].final++;acc.t[m[104].b.name].final++;acc.t[m[104].w.name].champ++;
 }
 function applyKO(id,a,b){const lk=state.lockedKO[id];if(lk){if(lk===a.name)return a;if(lk===b.name)return b;}return koWin(a,b);}
-function newAcc(){const t={};for(const n of ALLTEAMS)t[n]={pos:[0,0,0,0],adv3:0,qual:0,r16:0,qf:0,sf:0,final:0,champ:0,epts:0,egf:0,ega:0};const slot={};for(const id of [73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88])slot[id]={a:{},b:{}};return {t,slot,n:0};}
+function newAcc(){const t={};for(const n of ALLTEAMS)t[n]={pos:[0,0,0,0],adv3:0,qual:0,r16:0,qf:0,sf:0,final:0,champ:0,epts:0,egf:0,ega:0};const slot={};for(const id of [73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,104])slot[id]={a:{},b:{}};return {t,slot,n:0};}
 let running=false;
 function runMC(N,done){
   if(running)return;running=true;
@@ -493,13 +494,19 @@ function renderGroups(){
 function renderBracket(){
   const w=$("#bracketwrap");
   if(!results){w.innerHTML=emptyRun();return;}
+  if(!results.slot||!results.slot[104]){w.innerHTML="<div class='empty'>Run a new simulation to build the full bracket projection.<br><button class=\"btn-go bigrun\" onclick=\"document.getElementById('runbtn').click()\">\u25B6 Run simulation</button></div>";return;}
   const n=results.n;const modal=o=>{let bn="?",bc=-1;for(const k in o)if(o[k]>bc){bc=o[k];bn=k;}return [bn,bc];};
-  const ids=[73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88];let h="";
-  for(const id of ids){const M=results.slot[id];const [an,ac]=modal(M.a),[bn,bc]=modal(M.b);
-    h+=`<div class="bm"><div class="ml">MATCH ${id}</div>`+
+  const card=id=>{const M=results.slot[id];if(!M)return"";const [an,ac]=modal(M.a),[bn,bc]=modal(M.b);
+    return `<div class="bm"><div class="ml">MATCH ${id}</div>`+
     `<div class="t"><span class="nm">${flag(an)}${esc(an)}</span><span class="pp">${fmt(pct(ac,n))}%</span></div>`+
     `<div class="vs">vs</div>`+
-    `<div class="t"><span class="nm">${flag(bn)}${esc(bn)}</span><span class="pp">${fmt(pct(bc,n))}%</span></div></div>`;}
+    `<div class="t"><span class="nm">${flag(bn)}${esc(bn)}</span><span class="pp">${fmt(pct(bc,n))}%</span></div></div>`;};
+  const hdr=t=>`<div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:15px;margin:18px 0 9px;color:var(--lime)">${t}</div>`;
+  const rounds=[["Round of 32",[73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88]],["Round of 16",[89,90,91,92,93,94,95,96]],["Quarter-finals",[97,98,99,100]],["Semi-finals",[101,102]],["Final",[104]]];
+  let h="";
+  for(const [nm,ids] of rounds){h+=hdr(nm)+ids.map(card).join("");}
+  const champ=ALLTEAMS.map(nm=>({nm,c:results.t[nm].champ})).sort((a,b)=>b.c-a.c)[0];
+  h+=hdr("Most likely champion")+`<div class="bm" style="border-color:var(--lime);box-shadow:0 0 0 1px rgba(200,255,61,.5)"><div class="t"><span class="nm" style="font-size:16px">\uD83C\uDFC6 ${flag(champ.nm)}${esc(champ.nm)}</span><span class="pp" style="color:var(--lime)">${fmt(pct(champ.c,n))}%</span></div></div>`;
   w.innerHTML=h;
 }
 
