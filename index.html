@@ -461,7 +461,7 @@ function renderOdds(){
   // metric seg
   $("#metricseg").innerHTML=METRICS.map(m=>`<div class="seg ${m[0]===curMetric?'on':''}" data-m="${m[0]}">${m[1]}</div>`).join("");
   $$("#metricseg .seg").forEach(s=>s.onclick=()=>{curMetric=s.dataset.m;renderOdds();});
-  const val=t=>curMetric==="p1"?t.pos[0]:t[curMetric];
+  const val=t=>curMetric==="p1"?t.pos[0]:curMetric==="qualify"?t.qual:t[curMetric];
   const col=({champ:"var(--lime)",final:"var(--mag)",sf:"var(--mag)",qf:"var(--cyan)",r16:"var(--cyan)",qualify:"var(--grn)",p1:"var(--amber)"})[curMetric];
   arr.sort((a,b)=>val(b)-val(a));
   lb.innerHTML=arr.map((t,i)=>{const p=pct(val(t),n);
