@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#070b11"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>WC26 Sim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#070b11; --panel:#0e1620; --panel2:#131e2b; --line:#22303f; --line2:#2c3e50;
+  --txt:#e9eef4; --mut:#8597a9; --mut2:#5e7287;
+  --lime:#c8ff3d; --mag:#ff4d8d; --cyan:#3fe0ff; --amber:#ffc23d; --red:#ff5b5b; --grn:#37e08a;
+  --r:14px; --nav:64px; --safe:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--ink);color:var(--txt);font-family:'Schibsted Grotesk',system-ui,sans-serif;font-size:16px;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;
+  background-image:radial-gradient(700px 380px at 90% -8%, rgba(200,255,61,.07), transparent 60%),radial-gradient(560px 320px at -10% 0%, rgba(255,77,141,.06), transparent 55%);}
+.mono{font-family:'IBM Plex Mono',monospace}
+.disp{font-family:'Bricolage Grotesque',sans-serif}
+a{color:var(--cyan)}
+input,select,button,textarea{font-family:inherit}
+/* inputs at 16px to stop iOS zoom-on-focus */
+select,input{background:var(--panel2);color:var(--txt);border:1px solid var(--line2);border-radius:9px;padding:9px 10px;font-size:16px;font-family:'IBM Plex Mono'}
+
+/* ---- app bar ---- */
+.appbar{position:sticky;top:0;z-index:40;backdrop-filter:blur(12px);background:rgba(7,11,17,.86);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top,0px) + 9px) 14px 9px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.brand{font-family:'Bricolage Grotesque';font-weight:800;font-size:18px;letter-spacing:-.4px;line-height:1}
+.brand b{color:var(--lime)}
+.abr{margin-left:auto;display:flex;align-items:center;gap:8px}
+.abr select{padding:8px 8px;font-size:13px;border-radius:9px}
+.icon-btn{background:var(--panel2);border:1px solid var(--line2);border-radius:9px;width:40px;height:40px;display:grid;place-items:center;color:var(--txt)}
+.icon-btn:active{background:var(--panel)}
+.btn-go{cursor:pointer;border:none;border-radius:10px;font-weight:700;font-size:14px;padding:9px 16px;color:#08110a;background:var(--lime);box-shadow:0 6px 20px -8px rgba(200,255,61,.6)}
+.btn-go:active{transform:scale(.97)}
+.btn-go:disabled{opacity:.55}
+#progress{height:3px;background:transparent;overflow:hidden}
+#progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--lime),var(--cyan));transition:width .1s}
+
+/* ---- layout ---- */
+main{padding:14px 14px calc(var(--nav) + var(--safe) + 24px)}
+.sec{display:none}
+.sec.on{display:block;animation:fade .2s}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.h{display:flex;align-items:baseline;gap:9px;margin:2px 0 12px}
+.h h2{font-family:'Bricolage Grotesque';font-weight:700;font-size:20px;margin:0;letter-spacing:-.3px}
+.h .s{color:var(--mut);font-size:12.5px}
+.card{background:linear-gradient(180deg,var(--panel),#0c141d);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:13px}
+.note{color:var(--mut);font-size:12.5px;line-height:1.55}
+.muted{color:var(--mut)}
+.hide{display:none!important}
+hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
+.empty{color:var(--mut);text-align:center;padding:46px 12px;font-size:14px;line-height:1.5}
+.bigrun{display:inline-block;margin-top:12px}
+
+/* flags + tags */
+.flag{font-size:18px;margin-right:7px;vertical-align:-2px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.gtag{display:inline-grid;place-items:center;min-width:19px;height:19px;font-family:'IBM Plex Mono';font-size:10.5px;color:#08110a;background:var(--mut);border-radius:5px;padding:0 4px;font-weight:600}
+.elo{color:var(--mut);font-family:'IBM Plex Mono';font-size:11.5px}
+
+/* ---- segmented metric pills ---- */
+.segwrap{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.segwrap::-webkit-scrollbar{display:none}
+.seg{flex:0 0 auto;padding:8px 13px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--mut);font-weight:600;font-size:13px;white-space:nowrap}
+.seg.on{background:var(--lime);color:#08110a;border-color:var(--lime)}
+
+/* ---- champ bars ---- */
+.crow{display:flex;align-items:center;gap:10px;margin:7px 0}
+.crow .nm{width:42%;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow .bar{flex:1;height:18px;background:var(--panel2);border-radius:6px;overflow:hidden}
+.crow .bar>div{height:100%;background:linear-gradient(90deg,var(--lime),var(--cyan));border-radius:6px}
+.crow .v{width:48px;text-align:right;font-family:'IBM Plex Mono';font-size:12.5px;color:var(--lime)}
+
+/* ---- leaderboard list ---- */
+.lrow{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line)}
+.lrow:active{background:rgba(255,255,255,.03)}
+.lrow .rk{width:22px;text-align:center;font-family:'IBM Plex Mono';font-size:12px;color:var(--mut2)}
+.lrow .who{flex:1;min-width:0}
+.lrow .who .n1{font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .who .n2{font-size:11px;color:var(--mut);margin-top:1px}
+.lrow .track{width:34%;height:9px;background:var(--panel2);border-radius:5px;overflow:hidden}
+.lrow .track>div{height:100%;border-radius:5px}
+.lrow .pv{width:50px;text-align:right;font-family:'IBM Plex Mono';font-size:14px;font-weight:600}
+
+/* ---- group cards ---- */
+.gcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.gcard h3{margin:0;padding:11px 14px;font-family:'Bricolage Grotesque';font-size:15.5px;background:var(--panel2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.gcard h3 small{color:var(--mut);font-family:'IBM Plex Mono';font-size:10.5px;font-weight:400}
+.grow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.grow:last-child{border-bottom:none}
+.grow:active{background:rgba(255,255,255,.03)}
+.grow .who{flex:1;min-width:0}
+.grow .who .n1{font-weight:600;font-size:14px}
+.grow .who .n2{font-size:11px;color:var(--mut);margin-top:2px;font-family:'IBM Plex Mono'}
+.grow .adv{width:62px;text-align:right}
+.grow .adv .big{font-family:'IBM Plex Mono';font-weight:700;font-size:17px}
+.grow .adv .lab{font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.qualbar{box-shadow:inset 3px 0 0 var(--lime)}
+.hopebar{box-shadow:inset 3px 0 0 var(--amber)}
+
+/* ---- bracket list ---- */
+.bm{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:10px 13px;margin-bottom:9px}
+.bm .ml{font-family:'IBM Plex Mono';font-size:10px;color:var(--mut2);letter-spacing:1px;margin-bottom:5px}
+.bm .t{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
+.bm .t .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.bm .t .pp{font-family:'IBM Plex Mono';font-size:11px;color:var(--mut)}
+.bm .vs{font-size:10px;color:var(--mut2);text-align:center;margin:1px 0}
+
+/* ---- results entry ---- */
+.fx{display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid var(--line)}
+.fx:last-child{border-bottom:none}
+.fx .md{width:30px;color:var(--mut2);font-family:'IBM Plex Mono';font-size:10px}
+.fx .ta{flex:1;text-align:right;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx .tb{flex:1;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx input{width:46px;text-align:center;padding:9px 4px;font-size:17px}
+.fx .dash{color:var(--mut2)}
+.fx.locked{background:rgba(200,255,61,.06)}
+.fx.locked .ta,.fx.locked .tb{color:var(--lime);font-weight:600}
+
+/* ---- team detail ---- */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+.stat .k{color:var(--mut);font-size:10.5px;letter-spacing:.4px;text-transform:uppercase}
+.stat .v{font-family:'IBM Plex Mono';font-size:21px;font-weight:600;margin-top:3px}
+.path{display:flex;align-items:center;gap:10px;margin:8px 0}
+.path .l{width:38%;color:var(--mut);font-size:12.5px}
+.path .tk{flex:1;height:13px;background:var(--panel2);border-radius:5px;overflow:hidden}
+.path .tk>div{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--mag),var(--amber))}
+.path .pv{width:50px;text-align:right;font-family:'IBM Plex Mono';font-size:13px}
+
+/* ---- charts ---- */
+svg.chart{width:100%;height:240px;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:11px;margin-top:9px;font-size:12px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* ---- snapshots ---- */
+.snap{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12.5px;margin-bottom:6px}
+.snap .ts{color:var(--mut);font-family:'IBM Plex Mono';font-size:10.5px;margin-left:auto}
+.xbtn{background:transparent;border:1px solid var(--line2);color:var(--mut);border-radius:8px;width:30px;height:30px;font-size:13px}
+
+/* ---- settings ---- */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
+.field label{color:var(--mut);font-size:11.5px;letter-spacing:.3px;text-transform:uppercase}
+.field input,.field select{width:100%}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.btn{cursor:pointer;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);border-radius:10px;font-weight:600;font-size:14px;padding:11px 14px;width:100%}
+.btn:active{background:var(--panel)}
+.btn-accent{background:var(--lime);color:#08110a;border:none}
+.btn-danger{color:var(--red);border-color:var(--red)}
+.elogrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ee{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px 9px}
+.ee .nm{flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ee input{width:62px;padding:7px 5px;font-size:14px}
+.statusbox{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);font-size:13px;margin-bottom:11px}
+.dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--mut2)}
+.dot.ok{background:var(--grn);box-shadow:0 0 8px var(--grn)}
+.dot.warn{background:var(--amber)}
+.dot.err{background:var(--red)}
+.dot.con{background:var(--cyan);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.4}}
+
+/* overlay sections (team / settings) slide over */
+.overlay{position:fixed;inset:0;z-index:50;background:var(--ink);overflow-y:auto;display:none;padding:0 0 calc(var(--safe) + 30px)}
+.overlay.on{display:block;animation:slidein .22s}
+@keyframes slidein{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.obar{position:sticky;top:0;background:rgba(7,11,17,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 11px) 14px 11px;z-index:2}
+.obar .back{background:var(--panel2);border:1px solid var(--line2);border-radius:9px;width:38px;height:38px;color:var(--txt);font-size:18px}
+.obar h2{font-family:'Bricolage Grotesque';font-size:18px;margin:0}
+.opad{padding:14px}
+
+/* ---- bottom nav ---- */
+nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;background:rgba(11,17,26,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:var(--safe);height:calc(var(--nav) + var(--safe))}
+nav.bottom button{flex:1;background:none;border:none;color:var(--mut2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;padding-top:6px}
+nav.bottom button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+nav.bottom button.on{color:var(--lime)}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--nav) + var(--safe) + 16px);transform:translateX(-50%) translateY(8px);background:var(--lime);color:#08110a;font-weight:700;padding:11px 18px;border-radius:11px;font-size:13.5px;box-shadow:0 12px 30px -10px rgba(0,0,0,.6);z-index:99;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div class="brand disp">WC<b>26</b> SIM</div>
+  <div class="abr">
+    <span id="syncbadge" class="dot" title="sync"></span>
+    <select id="nsim">
+      <option value="10000">10k</option>
+      <option value="25000">25k</option>
+      <option value="50000" selected>50k</option>
+      <option value="100000">100k</option>
+    </select>
+    <button class="btn-go" id="runbtn">▶ Run</button>
+    <button class="icon-btn" id="gear" aria-label="settings">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</div>
+<div id="progress"><div></div></div>
+
+<main>
+  <!-- ODDS -->
+  <section id="odds" class="sec on">
+    <div class="card">
+      <div class="h"><h2 class="disp">Title race</h2><span class="s" id="odds-sub"></span></div>
+      <div id="champchart"></div>
+    </div>
+    <div class="card">
+      <div class="h"><h2 class="disp">Survival odds</h2><span class="s">tap a team</span></div>
+      <div class="segwrap" id="metricseg"></div>
+      <div id="leaderboard"></div>
+    </div>
+  </section>
+
+  <!-- GROUPS -->
+  <section id="groups" class="sec">
+    <div class="h"><h2 class="disp">The twelve groups</h2></div>
+    <p class="note" style="margin-top:-6px">Lime bar = likely top-2 · amber = best-third hopeful. Tap any team.</p>
+    <div id="groupwrap"></div>
+  </section>
+
+  <!-- BRACKET -->
+  <section id="bracket" class="sec">
+    <div class="h"><h2 class="disp">Projected R32</h2></div>
+    <p class="note" style="margin-top:-6px">Each slot shows the single most-frequent team across all sims, with how often it landed there. It's a projection of likelihoods, not one real path — so a team can show up twice. Enter results to lock the true bracket.</p>
+    <div id="bracketwrap"></div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="sec">
+    <div class="h"><h2 class="disp">Enter results</h2></div>
+    <div class="segwrap" id="resseg">
+      <div class="seg on" data-rv="group">⚽ Group stage</div>
+      <div class="seg" data-rv="ko">🏆 Knockout</div>
+    </div>
+    <div id="resgroup">
+      <div style="display:flex;justify-content:flex-end;margin:-2px 0 6px"><button class="xbtn" id="clearres" style="width:auto;padding:0 10px">Clear group</button></div>
+      <p class="note" style="margin-top:0">Type a score to <b>lock that match as fact</b> — the next run keeps it and only re-rolls unplayed games. Then tap <b>Run</b>. Scores sync across your devices.</p>
+      <div id="reswrap"></div>
+    </div>
+    <div id="resko" class="hide">
+      <div style="display:flex;justify-content:flex-end;margin:-2px 0 6px"><button class="xbtn" id="clearko" style="width:auto;padding:0 10px">Clear knockout</button></div>
+      <div id="kowrap"></div>
+    </div>
+  </section>
+
+  <!-- TRENDS -->
+  <section id="trends" class="sec">
+    <div class="h"><h2 class="disp">Odds over time</h2></div>
+    <div class="row2" style="margin-bottom:10px">
+      <select id="histmetric">
+        <option value="champ">Win tournament</option>
+        <option value="final">Reach final</option>
+        <option value="sf">Reach semis</option>
+        <option value="qf">Reach quarters</option>
+        <option value="qualify">Qualify</option>
+        <option value="p1">Win group</option>
+      </select>
+      <select id="histscope"><option value="top8">Top 8 teams</option><option value="one">One team…</option></select>
+    </div>
+    <select id="histteam" class="hide" style="width:100%;margin-bottom:10px"></select>
+    <div class="card"><svg class="chart" id="histchart"></svg><div class="legend" id="histlegend"></div></div>
+    <p class="note" id="histnote"></p>
+    <div class="h" style="margin-top:6px"><h2 class="disp" style="font-size:16px">Snapshots</h2>
+      <button class="xbtn" id="clearhist" style="margin-left:auto;width:auto;padding:0 10px">Delete all</button></div>
+    <div id="snaplist"></div>
+  </section>
+</main>
+
+<!-- TEAM OVERLAY -->
+<div class="overlay" id="teamov">
+  <div class="obar"><button class="back" id="teamback">←</button><h2 class="disp">Team</h2>
+    <select id="teamsel" style="margin-left:auto;max-width:62%"></select></div>
+  <div class="opad" id="teambody"></div>
+</div>
+
+<!-- SETTINGS OVERLAY -->
+<div class="overlay" id="setov">
+  <div class="obar"><button class="back" id="setback">←</button><h2 class="disp">Settings</h2></div>
+  <div class="opad">
+    <div class="card">
+      <div class="h"><h2 class="disp" style="font-size:16px">Cloud sync</h2></div>
+      <div class="statusbox"><span class="dot" id="syncdot"></span><span id="syncstatus">—</span></div>
+      <div class="field"><label>Sync code (use the same on every device)</label><input type="text" id="synccode" placeholder="e.g. tommy-wc26" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <button class="btn btn-accent" id="savecode">Save &amp; connect</button>
+      <p class="note" id="syncnote" style="margin-top:10px"></p>
+    </div>
+    <div class="card">
+      <div class="h"><h2 class="disp" style="font-size:16px">Model</h2></div>
+      <div class="row2">
+        <div class="field"><label>Host home adv (Elo)</label><input type="number" id="set-ha" value="80" step="5" inputmode="numeric"></div>
+        <div class="field"><label>Avg goals (μ)</label><input type="number" id="set-mu" value="2.70" step="0.05" inputmode="decimal"></div>
+      </div>
+      <div class="field"><label>Group tiebreaker</label>
+        <select id="set-tb"><option value="h2h">Head-to-head first (FIFA 2026)</option><option value="overall">Overall GD first (2018/22)</option></select></div>
+      <p class="note">Elo gap → win/draw/loss probability → realistic scoreline from twin Poisson draws. Knockout ties fold in extra-time &amp; penalties.</p>
+    </div>
+    <div class="card">
+      <div class="h"><h2 class="disp" style="font-size:16px">Elo ratings</h2>
+        <button class="xbtn" id="resetelo" style="margin-left:auto;width:auto;padding:0 10px">Reset</button></div>
+      <p class="note" style="margin-bottom:10px">Edit any value, then Run.</p>
+      <div class="elogrid" id="eloedit"></div>
+    </div>
+    <div class="card">
+      <div class="h"><h2 class="disp" style="font-size:16px">Backup &amp; reset</h2></div>
+      <div class="field"><button class="btn" id="exportbtn">⬇ Export everything (JSON)</button></div>
+      <div class="field"><button class="btn" id="importbtn">⬆ Import JSON</button><input type="file" id="importfile" accept="application/json" class="hide"></div>
+      <button class="btn btn-danger" id="resetall">Reset app</button>
+      <p class="note" style="margin-top:10px">On a real web address (e.g. GitHub Pages) your data is also cached in this browser automatically. Cloud sync keeps every device in step.</p>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom" id="bnav">
+  <button data-t="odds" class="on"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg>Odds</button>
+  <button data-t="groups"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Groups</button>
+  <button data-t="bracket"><svg viewBox="0 0 24 24"><path d="M6 3v6a3 3 0 0 0 3 3h3"/><path d="M6 21v-6a3 3 0 0 1 3-3"/><line x1="18" y1="12" x2="12" y2="12"/><circle cx="19" cy="12" r="2"/></svg>Bracket</button>
+  <button data-t="results"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Results</button>
+  <button data-t="trends"><svg viewBox="0 0 24 24"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>Trends</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- ============ APP (classic) ============ -->
+<script>
+"use strict";
+const THIRD_TABLE = {"EFGHIJKL":{"A":"E","B":"J","D":"I","E":"F","G":"H","I":"G","K":"L","L":"K"},"DFGHIJKL":{"A":"H","B":"G","D":"I","E":"D","G":"J","I":"F","K":"L","L":"K"},"DEGHIJKL":{"A":"E","B":"J","D":"I","E":"D","G":"H","I":"G","K":"L","L":"K"},"DEFHIJKL":{"A":"E","B":"J","D":"I","E":"D","G":"H","I":"F","K":"L","L":"K"},"DEFGIJKL":{"A":"E","B":"G","D":"I","E":"D","G":"J","I":"F","K":"L","L":"K"},"DEFGHJKL":{"A":"E","B":"G","D":"J","E":"D","G":"H","I":"F","K":"L","L":"K"},"DEFGHIKL":{"A":"E","B":"G","D":"I","E":"D","G":"H","I":"F","K":"L","L":"K"},"DEFGHIJL":{"A":"E","B":"G","D":"J","E":"D","G":"H","I":"F","K":"L","L":"I"},"DEFGHIJK":{"A":"E","B":"G","D":"J","E":"D","G":"H","I":"F","K":"I","L":"K"},"CFGHIJKL":{"A":"H","B":"G","D":"I","E":"C","G":"J","I":"F","K":"L","L":"K"},"CEGHIJKL":{"A":"E","B":"J","D":"I","E":"C","G":"H","I":"G","K":"L","L":"K"},"CEFHIJKL":{"A":"E","B":"J","D":"I","E":"C","G":"H","I":"F","K":"L","L":"K"},"CEFGIJKL":{"A":"E","B":"G","D":"I","E":"C","G":"J","I":"F","K":"L","L":"K"},"CEFGHJKL":{"A":"E","B":"G","D":"J","E":"C","G":"H","I":"F","K":"L","L":"K"},"CEFGHIKL":{"A":"E","B":"G","D":"I","E":"C","G":"H","I":"F","K":"L","L":"K"},"CEFGHIJL":{"A":"E","B":"G","D":"J","E":"C","G":"H","I":"F","K":"L","L":"I"},"CEFGHIJK":{"A":"E","B":"G","D":"J","E":"C","G":"H","I":"F","K":"I","L":"K"},"CDGHIJKL":{"A":"H","B":"G","D":"I","E":"C","G":"J","I":"D","K":"L","L":"K"},"CDFHIJKL":{"A":"C","B":"J","D":"I","E":"D","G":"H","I":"F","K":"L","L":"K"},"CDFGIJKL":{"A":"C","B":"G","D":"I","E":"D","G":"J","I":"F","K":"L","L":"K"},"CDFGHJKL":{"A":"C","B":"G","D":"J","E":"D","G":"H","I":"F","K":"L","L":"K"},"CDFGHIKL":{"A":"C","B":"G","D":"I","E":"D","G":"H","I":"F","K":"L","L":"K"},"CDFGHIJL":{"A":"C","B":"G","D":"J","E":"D","G":"H","I":"F","K":"L","L":"I"},"CDFGHIJK":{"A":"C","B":"G","D":"J","E":"D","G":"H","I":"F","K":"I","L":"K"},"CDEHIJKL":{"A":"E","B":"J","D":"I","E":"C","G":"H","I":"D","K":"L","L":"K"},"CDEGIJKL":{"A":"E","B":"G","D":"I","E":"C","G":"J","I":"D","K":"L","L":"K"},"CDEGHJKL":{"A":"E","B":"G","D":"J","E":"C","G":"H","I":"D","K":"L","L":"K"},"CDEGHIKL":{"A":"E","B":"G","D":"I","E":"C","G":"H","I":"D","K":"L","L":"K"},"CDEGHIJL":{"A":"E","B":"G","D":"J","E":"C","G":"H","I":"D","K":"L","L":"I"},"CDEGHIJK":{"A":"E","B":"G","D":"J","E":"C","G":"H","I":"D","K":"I","L":"K"},"CDEFIJKL":{"A":"C","B":"J","D":"E","E":"D","G":"I","I":"F","K":"L","L":"K"},"CDEFHJKL":{"A":"C","B":"J","D":"E","E":"D","G":"H","I":"F","K":"L","L":"K"},"CDEFHIKL":{"A":"C","B":"E","D":"I","E":"D","G":"H","I":"F","K":"L","L":"K"},"CDEFHIJL":{"A":"C","B":"J","D":"E","E":"D","G":"H","I":"F","K":"L","L":"I"},"CDEFHIJK":{"A":"C","B":"J","D":"E","E":"D","G":"H","I":"F","K":"I","L":"K"},"CDEFGJKL":{"A":"C","B":"G","D":"E","E":"D","G":"J","I":"F","K":"L","L":"K"},"CDEFGIKL":{"A":"C","B":"G","D":"E","E":"D","G":"I","I":"F","K":"L","L":"K"},"CDEFGIJL":{"A":"C","B":"G","D":"E","E":"D","G":"J","I":"F","K":"L","L":"I"},"CDEFGIJK":{"A":"C","B":"G","D":"E","E":"D","G":"J","I":"F","K":"I","L":"K"},"CDEFGHKL":{"A":"C","B":"G","D":"E","E":"D","G":"H","I":"F","K":"L","L":"K"},"CDEFGHJL":{"A":"C","B":"G","D":"J","E":"D","G":"H","I":"F","K":"L","L":"E"},"CDEFGHJK":{"A":"C","B":"G","D":"J","E":"D","G":"H","I":"F","K":"E","L":"K"},"CDEFGHIL":{"A":"C","B":"G","D":"E","E":"D","G":"H","I":"F","K":"L","L":"I"},"CDEFGHIK":{"A":"C","B":"G","D":"E","E":"D","G":"H","I":"F","K":"I","L":"K"},"CDEFGHIJ":{"A":"C","B":"G","D":"J","E":"D","G":"H","I":"F","K":"E","L":"I"},"BFGHIJKL":{"A":"H","B":"J","D":"B","E":"F","G":"I","I":"G","K":"L","L":"K"},"BEGHIJKL":{"A":"E","B":"J","D":"I","E":"B","G":"H","I":"G","K":"L","L":"K"},"BEFHIJKL":{"A":"E","B":"J","D":"B","E":"F","G":"I","I":"H","K":"L","L":"K"},"BEFGIJKL":{"A":"E","B":"J","D":"B","E":"F","G":"I","I":"G","K":"L","L":"K"},"BEFGHJKL":{"A":"E","B":"J","D":"B","E":"F","G":"H","I":"G","K":"L","L":"K"},"BEFGHIKL":{"A":"E","B":"G","D":"B","E":"F","G":"I","I":"H","K":"L","L":"K"},"BEFGHIJL":{"A":"E","B":"J","D":"B","E":"F","G":"H","I":"G","K":"L","L":"I"},"BEFGHIJK":{"A":"E","B":"J","D":"B","E":"F","G":"H","I":"G","K":"I","L":"K"},"BDGHIJKL":{"A":"H","B":"J","D":"B","E":"D","G":"I","I":"G","K":"L","L":"K"},"BDFHIJKL":{"A":"H","B":"J","D":"B","E":"D","G":"I","I":"F","K":"L","L":"K"},"BDFGIJKL":{"A":"I","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"K"},"BDFGHJKL":{"A":"H","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"K"},"BDFGHIKL":{"A":"H","B":"G","D":"B","E":"D","G":"I","I":"F","K":"L","L":"K"},"BDFGHIJL":{"A":"H","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"I"},"BDFGHIJK":{"A":"H","B":"G","D":"B","E":"D","G":"J","I":"F","K":"I","L":"K"},"BDEHIJKL":{"A":"E","B":"J","D":"B","E":"D","G":"I","I":"H","K":"L","L":"K"},"BDEGIJKL":{"A":"E","B":"J","D":"B","E":"D","G":"I","I":"G","K":"L","L":"K"},"BDEGHJKL":{"A":"E","B":"J","D":"B","E":"D","G":"H","I":"G","K":"L","L":"K"},"BDEGHIKL":{"A":"E","B":"G","D":"B","E":"D","G":"I","I":"H","K":"L","L":"K"},"BDEGHIJL":{"A":"E","B":"J","D":"B","E":"D","G":"H","I":"G","K":"L","L":"I"},"BDEGHIJK":{"A":"E","B":"J","D":"B","E":"D","G":"H","I":"G","K":"I","L":"K"},"BDEFIJKL":{"A":"E","B":"J","D":"B","E":"D","G":"I","I":"F","K":"L","L":"K"},"BDEFHJKL":{"A":"E","B":"J","D":"B","E":"D","G":"H","I":"F","K":"L","L":"K"},"BDEFHIKL":{"A":"E","B":"I","D":"B","E":"D","G":"H","I":"F","K":"L","L":"K"},"BDEFHIJL":{"A":"E","B":"J","D":"B","E":"D","G":"H","I":"F","K":"L","L":"I"},"BDEFHIJK":{"A":"E","B":"J","D":"B","E":"D","G":"H","I":"F","K":"I","L":"K"},"BDEFGJKL":{"A":"E","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"K"},"BDEFGIKL":{"A":"E","B":"G","D":"B","E":"D","G":"I","I":"F","K":"L","L":"K"},"BDEFGIJL":{"A":"E","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"I"},"BDEFGIJK":{"A":"E","B":"G","D":"B","E":"D","G":"J","I":"F","K":"I","L":"K"},"BDEFGHKL":{"A":"E","B":"G","D":"B","E":"D","G":"H","I":"F","K":"L","L":"K"},"BDEFGHJL":{"A":"H","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"E"},"BDEFGHJK":{"A":"H","B":"G","D":"B","E":"D","G":"J","I":"F","K":"E","L":"K"},"BDEFGHIL":{"A":"E","B":"G","D":"B","E":"D","G":"H","I":"F","K":"L","L":"I"},"BDEFGHIK":{"A":"E","B":"G","D":"B","E":"D","G":"H","I":"F","K":"I","L":"K"},"BDEFGHIJ":{"A":"H","B":"G","D":"B","E":"D","G":"J","I":"F","K":"E","L":"I"},"BCGHIJKL":{"A":"H","B":"J","D":"B","E":"C","G":"I","I":"G","K":"L","L":"K"},"BCFHIJKL":{"A":"H","B":"J","D":"B","E":"C","G":"I","I":"F","K":"L","L":"K"},"BCFGIJKL":{"A":"I","B":"G","D":"B","E":"C","G":"J","I":"F","K":"L","L":"K"},"BCFGHJKL":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"L","L":"K"},"BCFGHIKL":{"A":"H","B":"G","D":"B","E":"C","G":"I","I":"F","K":"L","L":"K"},"BCFGHIJL":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"L","L":"I"},"BCFGHIJK":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"I","L":"K"},"BCEHIJKL":{"A":"E","B":"J","D":"B","E":"C","G":"I","I":"H","K":"L","L":"K"},"BCEGIJKL":{"A":"E","B":"J","D":"B","E":"C","G":"I","I":"G","K":"L","L":"K"},"BCEGHJKL":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"G","K":"L","L":"K"},"BCEGHIKL":{"A":"E","B":"G","D":"B","E":"C","G":"I","I":"H","K":"L","L":"K"},"BCEGHIJL":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"G","K":"L","L":"I"},"BCEGHIJK":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"G","K":"I","L":"K"},"BCEFIJKL":{"A":"E","B":"J","D":"B","E":"C","G":"I","I":"F","K":"L","L":"K"},"BCEFHJKL":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"F","K":"L","L":"K"},"BCEFHIKL":{"A":"E","B":"I","D":"B","E":"C","G":"H","I":"F","K":"L","L":"K"},"BCEFHIJL":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"F","K":"L","L":"I"},"BCEFHIJK":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"F","K":"I","L":"K"},"BCEFGJKL":{"A":"E","B":"G","D":"B","E":"C","G":"J","I":"F","K":"L","L":"K"},"BCEFGIKL":{"A":"E","B":"G","D":"B","E":"C","G":"I","I":"F","K":"L","L":"K"},"BCEFGIJL":{"A":"E","B":"G","D":"B","E":"C","G":"J","I":"F","K":"L","L":"I"},"BCEFGIJK":{"A":"E","B":"G","D":"B","E":"C","G":"J","I":"F","K":"I","L":"K"},"BCEFGHKL":{"A":"E","B":"G","D":"B","E":"C","G":"H","I":"F","K":"L","L":"K"},"BCEFGHJL":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"L","L":"E"},"BCEFGHJK":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"E","L":"K"},"BCEFGHIL":{"A":"E","B":"G","D":"B","E":"C","G":"H","I":"F","K":"L","L":"I"},"BCEFGHIK":{"A":"E","B":"G","D":"B","E":"C","G":"H","I":"F","K":"I","L":"K"},"BCEFGHIJ":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"E","L":"I"},"BCDHIJKL":{"A":"H","B":"J","D":"B","E":"C","G":"I","I":"D","K":"L","L":"K"},"BCDGIJKL":{"A":"I","B":"G","D":"B","E":"C","G":"J","I":"D","K":"L","L":"K"},"BCDGHJKL":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"D","K":"L","L":"K"},"BCDGHIKL":{"A":"H","B":"G","D":"B","E":"C","G":"I","I":"D","K":"L","L":"K"},"BCDGHIJL":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"D","K":"L","L":"I"},"BCDGHIJK":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"D","K":"I","L":"K"},"BCDFIJKL":{"A":"C","B":"J","D":"B","E":"D","G":"I","I":"F","K":"L","L":"K"},"BCDFHJKL":{"A":"C","B":"J","D":"B","E":"D","G":"H","I":"F","K":"L","L":"K"},"BCDFHIKL":{"A":"C","B":"I","D":"B","E":"D","G":"H","I":"F","K":"L","L":"K"},"BCDFHIJL":{"A":"C","B":"J","D":"B","E":"D","G":"H","I":"F","K":"L","L":"I"},"BCDFHIJK":{"A":"C","B":"J","D":"B","E":"D","G":"H","I":"F","K":"I","L":"K"},"BCDFGJKL":{"A":"C","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"K"},"BCDFGIKL":{"A":"C","B":"G","D":"B","E":"D","G":"I","I":"F","K":"L","L":"K"},"BCDFGIJL":{"A":"C","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"I"},"BCDFGIJK":{"A":"C","B":"G","D":"B","E":"D","G":"J","I":"F","K":"I","L":"K"},"BCDFGHKL":{"A":"C","B":"G","D":"B","E":"D","G":"H","I":"F","K":"L","L":"K"},"BCDFGHJL":{"A":"C","B":"G","D":"B","E":"D","G":"H","I":"F","K":"L","L":"J"},"BCDFGHJK":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"D","L":"K"},"BCDFGHIL":{"A":"C","B":"G","D":"B","E":"D","G":"H","I":"F","K":"L","L":"I"},"BCDFGHIK":{"A":"C","B":"G","D":"B","E":"D","G":"H","I":"F","K":"I","L":"K"},"BCDFGHIJ":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"D","L":"I"},"BCDEIJKL":{"A":"E","B":"J","D":"B","E":"C","G":"I","I":"D","K":"L","L":"K"},"BCDEHJKL":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"D","K":"L","L":"K"},"BCDEHIKL":{"A":"E","B":"I","D":"B","E":"C","G":"H","I":"D","K":"L","L":"K"},"BCDEHIJL":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"D","K":"L","L":"I"},"BCDEHIJK":{"A":"E","B":"J","D":"B","E":"C","G":"H","I":"D","K":"I","L":"K"},"BCDEGJKL":{"A":"E","B":"G","D":"B","E":"C","G":"J","I":"D","K":"L","L":"K"},"BCDEGIKL":{"A":"E","B":"G","D":"B","E":"C","G":"I","I":"D","K":"L","L":"K"},"BCDEGIJL":{"A":"E","B":"G","D":"B","E":"C","G":"J","I":"D","K":"L","L":"I"},"BCDEGIJK":{"A":"E","B":"G","D":"B","E":"C","G":"J","I":"D","K":"I","L":"K"},"BCDEGHKL":{"A":"E","B":"G","D":"B","E":"C","G":"H","I":"D","K":"L","L":"K"},"BCDEGHJL":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"D","K":"L","L":"E"},"BCDEGHJK":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"D","K":"E","L":"K"},"BCDEGHIL":{"A":"E","B":"G","D":"B","E":"C","G":"H","I":"D","K":"L","L":"I"},"BCDEGHIK":{"A":"E","B":"G","D":"B","E":"C","G":"H","I":"D","K":"I","L":"K"},"BCDEGHIJ":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"D","K":"E","L":"I"},"BCDEFJKL":{"A":"C","B":"J","D":"B","E":"D","G":"E","I":"F","K":"L","L":"K"},"BCDEFIKL":{"A":"C","B":"E","D":"B","E":"D","G":"I","I":"F","K":"L","L":"K"},"BCDEFIJL":{"A":"C","B":"J","D":"B","E":"D","G":"E","I":"F","K":"L","L":"I"},"BCDEFIJK":{"A":"C","B":"J","D":"B","E":"D","G":"E","I":"F","K":"I","L":"K"},"BCDEFHKL":{"A":"C","B":"E","D":"B","E":"D","G":"H","I":"F","K":"L","L":"K"},"BCDEFHJL":{"A":"C","B":"J","D":"B","E":"D","G":"H","I":"F","K":"L","L":"E"},"BCDEFHJK":{"A":"C","B":"J","D":"B","E":"D","G":"H","I":"F","K":"E","L":"K"},"BCDEFHIL":{"A":"C","B":"E","D":"B","E":"D","G":"H","I":"F","K":"L","L":"I"},"BCDEFHIK":{"A":"C","B":"E","D":"B","E":"D","G":"H","I":"F","K":"I","L":"K"},"BCDEFHIJ":{"A":"C","B":"J","D":"B","E":"D","G":"H","I":"F","K":"E","L":"I"},"BCDEFGKL":{"A":"C","B":"G","D":"B","E":"D","G":"E","I":"F","K":"L","L":"K"},"BCDEFGJL":{"A":"C","B":"G","D":"B","E":"D","G":"J","I":"F","K":"L","L":"E"},"BCDEFGJK":{"A":"C","B":"G","D":"B","E":"D","G":"J","I":"F","K":"E","L":"K"},"BCDEFGIL":{"A":"C","B":"G","D":"B","E":"D","G":"E","I":"F","K":"L","L":"I"},"BCDEFGIK":{"A":"C","B":"G","D":"B","E":"D","G":"E","I":"F","K":"I","L":"K"},"BCDEFGIJ":{"A":"C","B":"G","D":"B","E":"D","G":"J","I":"F","K":"E","L":"I"},"BCDEFGHL":{"A":"C","B":"G","D":"B","E":"D","G":"H","I":"F","K":"L","L":"E"},"BCDEFGHK":{"A":"C","B":"G","D":"B","E":"D","G":"H","I":"F","K":"E","L":"K"},"BCDEFGHJ":{"A":"H","B":"G","D":"B","E":"C","G":"J","I":"F","K":"D","L":"E"},"BCDEFGHI":{"A":"C","B":"G","D":"B","E":"D","G":"H","I":"F","K":"E","L":"I"},"AFGHIJKL":{"A":"H","B":"J","D":"I","E":"F","G":"A","I":"G","K":"L","L":"K"},"AEGHIJKL":{"A":"E","B":"J","D":"I","E":"A","G":"H","I":"G","K":"L","L":"K"},"AEFHIJKL":{"A":"E","B":"J","D":"I","E":"F","G":"A","I":"H","K":"L","L":"K"},"AEFGIJKL":{"A":"E","B":"J","D":"I","E":"F","G":"A","I":"G","K":"L","L":"K"},"AEFGHJKL":{"A":"E","B":"G","D":"J","E":"F","G":"A","I":"H","K":"L","L":"K"},"AEFGHIKL":{"A":"E","B":"G","D":"I","E":"F","G":"A","I":"H","K":"L","L":"K"},"AEFGHIJL":{"A":"E","B":"G","D":"J","E":"F","G":"A","I":"H","K":"L","L":"I"},"AEFGHIJK":{"A":"E","B":"G","D":"J","E":"F","G":"A","I":"H","K":"I","L":"K"},"ADGHIJKL":{"A":"H","B":"J","D":"I","E":"D","G":"A","I":"G","K":"L","L":"K"},"ADFHIJKL":{"A":"H","B":"J","D":"I","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADFGIJKL":{"A":"I","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADFGHJKL":{"A":"H","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADFGHIKL":{"A":"H","B":"G","D":"I","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADFGHIJL":{"A":"H","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"I"},"ADFGHIJK":{"A":"H","B":"G","D":"J","E":"D","G":"A","I":"F","K":"I","L":"K"},"ADEHIJKL":{"A":"E","B":"J","D":"I","E":"D","G":"A","I":"H","K":"L","L":"K"},"ADEGIJKL":{"A":"E","B":"J","D":"I","E":"D","G":"A","I":"G","K":"L","L":"K"},"ADEGHJKL":{"A":"E","B":"G","D":"J","E":"D","G":"A","I":"H","K":"L","L":"K"},"ADEGHIKL":{"A":"E","B":"G","D":"I","E":"D","G":"A","I":"H","K":"L","L":"K"},"ADEGHIJL":{"A":"E","B":"G","D":"J","E":"D","G":"A","I":"H","K":"L","L":"I"},"ADEGHIJK":{"A":"E","B":"G","D":"J","E":"D","G":"A","I":"H","K":"I","L":"K"},"ADEFIJKL":{"A":"E","B":"J","D":"I","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADEFHJKL":{"A":"H","B":"J","D":"E","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADEFHIKL":{"A":"H","B":"E","D":"I","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADEFHIJL":{"A":"H","B":"J","D":"E","E":"D","G":"A","I":"F","K":"L","L":"I"},"ADEFHIJK":{"A":"H","B":"J","D":"E","E":"D","G":"A","I":"F","K":"I","L":"K"},"ADEFGJKL":{"A":"E","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADEFGIKL":{"A":"E","B":"G","D":"I","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADEFGIJL":{"A":"E","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"I"},"ADEFGIJK":{"A":"E","B":"G","D":"J","E":"D","G":"A","I":"F","K":"I","L":"K"},"ADEFGHKL":{"A":"H","B":"G","D":"E","E":"D","G":"A","I":"F","K":"L","L":"K"},"ADEFGHJL":{"A":"H","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"E"},"ADEFGHJK":{"A":"H","B":"G","D":"J","E":"D","G":"A","I":"F","K":"E","L":"K"},"ADEFGHIL":{"A":"H","B":"G","D":"E","E":"D","G":"A","I":"F","K":"L","L":"I"},"ADEFGHIK":{"A":"H","B":"G","D":"E","E":"D","G":"A","I":"F","K":"I","L":"K"},"ADEFGHIJ":{"A":"H","B":"G","D":"J","E":"D","G":"A","I":"F","K":"E","L":"I"},"ACGHIJKL":{"A":"H","B":"J","D":"I","E":"C","G":"A","I":"G","K":"L","L":"K"},"ACFHIJKL":{"A":"H","B":"J","D":"I","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACFGIJKL":{"A":"I","B":"G","D":"J","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACFGHJKL":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACFGHIKL":{"A":"H","B":"G","D":"I","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACFGHIJL":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"L","L":"I"},"ACFGHIJK":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"I","L":"K"},"ACEHIJKL":{"A":"E","B":"J","D":"I","E":"C","G":"A","I":"H","K":"L","L":"K"},"ACEGIJKL":{"A":"E","B":"J","D":"I","E":"C","G":"A","I":"G","K":"L","L":"K"},"ACEGHJKL":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"H","K":"L","L":"K"},"ACEGHIKL":{"A":"E","B":"G","D":"I","E":"C","G":"A","I":"H","K":"L","L":"K"},"ACEGHIJL":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"H","K":"L","L":"I"},"ACEGHIJK":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"H","K":"I","L":"K"},"ACEFIJKL":{"A":"E","B":"J","D":"I","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACEFHJKL":{"A":"H","B":"J","D":"E","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACEFHIKL":{"A":"H","B":"E","D":"I","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACEFHIJL":{"A":"H","B":"J","D":"E","E":"C","G":"A","I":"F","K":"L","L":"I"},"ACEFHIJK":{"A":"H","B":"J","D":"E","E":"C","G":"A","I":"F","K":"I","L":"K"},"ACEFGJKL":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACEFGIKL":{"A":"E","B":"G","D":"I","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACEFGIJL":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"F","K":"L","L":"I"},"ACEFGIJK":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"F","K":"I","L":"K"},"ACEFGHKL":{"A":"H","B":"G","D":"E","E":"C","G":"A","I":"F","K":"L","L":"K"},"ACEFGHJL":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"L","L":"E"},"ACEFGHJK":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"E","L":"K"},"ACEFGHIL":{"A":"H","B":"G","D":"E","E":"C","G":"A","I":"F","K":"L","L":"I"},"ACEFGHIK":{"A":"H","B":"G","D":"E","E":"C","G":"A","I":"F","K":"I","L":"K"},"ACEFGHIJ":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"E","L":"I"},"ACDHIJKL":{"A":"H","B":"J","D":"I","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDGIJKL":{"A":"I","B":"G","D":"J","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDGHJKL":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDGHIKL":{"A":"H","B":"G","D":"I","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDGHIJL":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"D","K":"L","L":"I"},"ACDGHIJK":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"D","K":"I","L":"K"},"ACDFIJKL":{"A":"C","B":"J","D":"I","E":"D","G":"A","I":"F","K":"L","L":"K"},"ACDFHJKL":{"A":"H","B":"J","D":"F","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDFHIKL":{"A":"H","B":"F","D":"I","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDFHIJL":{"A":"H","B":"J","D":"F","E":"C","G":"A","I":"D","K":"L","L":"I"},"ACDFHIJK":{"A":"H","B":"J","D":"F","E":"C","G":"A","I":"D","K":"I","L":"K"},"ACDFGJKL":{"A":"C","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"K"},"ACDFGIKL":{"A":"C","B":"G","D":"I","E":"D","G":"A","I":"F","K":"L","L":"K"},"ACDFGIJL":{"A":"C","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"I"},"ACDFGIJK":{"A":"C","B":"G","D":"J","E":"D","G":"A","I":"F","K":"I","L":"K"},"ACDFGHKL":{"A":"H","B":"G","D":"F","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDFGHJL":{"A":"C","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"H"},"ACDFGHJK":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"D","L":"K"},"ACDFGHIL":{"A":"H","B":"G","D":"F","E":"C","G":"A","I":"D","K":"L","L":"I"},"ACDFGHIK":{"A":"H","B":"G","D":"F","E":"C","G":"A","I":"D","K":"I","L":"K"},"ACDFGHIJ":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"D","L":"I"},"ACDEIJKL":{"A":"E","B":"J","D":"I","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDEHJKL":{"A":"H","B":"J","D":"E","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDEHIKL":{"A":"H","B":"E","D":"I","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDEHIJL":{"A":"H","B":"J","D":"E","E":"C","G":"A","I":"D","K":"L","L":"I"},"ACDEHIJK":{"A":"H","B":"J","D":"E","E":"C","G":"A","I":"D","K":"I","L":"K"},"ACDEGJKL":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDEGIKL":{"A":"E","B":"G","D":"I","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDEGIJL":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"D","K":"L","L":"I"},"ACDEGIJK":{"A":"E","B":"G","D":"J","E":"C","G":"A","I":"D","K":"I","L":"K"},"ACDEGHKL":{"A":"H","B":"G","D":"E","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDEGHJL":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"D","K":"L","L":"E"},"ACDEGHJK":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"D","K":"E","L":"K"},"ACDEGHIL":{"A":"H","B":"G","D":"E","E":"C","G":"A","I":"D","K":"L","L":"I"},"ACDEGHIK":{"A":"H","B":"G","D":"E","E":"C","G":"A","I":"D","K":"I","L":"K"},"ACDEGHIJ":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"D","K":"E","L":"I"},"ACDEFJKL":{"A":"C","B":"J","D":"E","E":"D","G":"A","I":"F","K":"L","L":"K"},"ACDEFIKL":{"A":"C","B":"E","D":"I","E":"D","G":"A","I":"F","K":"L","L":"K"},"ACDEFIJL":{"A":"C","B":"J","D":"E","E":"D","G":"A","I":"F","K":"L","L":"I"},"ACDEFIJK":{"A":"C","B":"J","D":"E","E":"D","G":"A","I":"F","K":"I","L":"K"},"ACDEFHKL":{"A":"H","B":"E","D":"F","E":"C","G":"A","I":"D","K":"L","L":"K"},"ACDEFHJL":{"A":"H","B":"J","D":"F","E":"C","G":"A","I":"D","K":"L","L":"E"},"ACDEFHJK":{"A":"H","B":"J","D":"E","E":"C","G":"A","I":"F","K":"D","L":"K"},"ACDEFHIL":{"A":"H","B":"E","D":"F","E":"C","G":"A","I":"D","K":"L","L":"I"},"ACDEFHIK":{"A":"H","B":"E","D":"F","E":"C","G":"A","I":"D","K":"I","L":"K"},"ACDEFHIJ":{"A":"H","B":"J","D":"E","E":"C","G":"A","I":"F","K":"D","L":"I"},"ACDEFGKL":{"A":"C","B":"G","D":"E","E":"D","G":"A","I":"F","K":"L","L":"K"},"ACDEFGJL":{"A":"C","B":"G","D":"J","E":"D","G":"A","I":"F","K":"L","L":"E"},"ACDEFGJK":{"A":"C","B":"G","D":"J","E":"D","G":"A","I":"F","K":"E","L":"K"},"ACDEFGIL":{"A":"C","B":"G","D":"E","E":"D","G":"A","I":"F","K":"L","L":"I"},"ACDEFGIK":{"A":"C","B":"G","D":"E","E":"D","G":"A","I":"F","K":"I","L":"K"},"ACDEFGIJ":{"A":"C","B":"G","D":"J","E":"D","G":"A","I":"F","K":"E","L":"I"},"ACDEFGHL":{"A":"H","B":"G","D":"F","E":"C","G":"A","I":"D","K":"L","L":"E"},"ACDEFGHK":{"A":"H","B":"G","D":"E","E":"C","G":"A","I":"F","K":"D","L":"K"},"ACDEFGHJ":{"A":"H","B":"G","D":"J","E":"C","G":"A","I":"F","K":"D","L":"E"},"ACDEFGHI":{"A":"H","B":"G","D":"E","E":"C","G":"A","I":"F","K":"D","L":"I"},"ABGHIJKL":{"A":"H","B":"J","D":"B","E":"A","G":"I","I":"G","K":"L","L":"K"},"ABFHIJKL":{"A":"H","B":"J","D":"B","E":"A","G":"I","I":"F","K":"L","L":"K"},"ABFGIJKL":{"A":"I","B":"J","D":"B","E":"F","G":"A","I":"G","K":"L","L":"K"},"ABFGHJKL":{"A":"H","B":"J","D":"B","E":"F","G":"A","I":"G","K":"L","L":"K"},"ABFGHIKL":{"A":"H","B":"G","D":"B","E":"A","G":"I","I":"F","K":"L","L":"K"},"ABFGHIJL":{"A":"H","B":"J","D":"B","E":"F","G":"A","I":"G","K":"L","L":"I"},"ABFGHIJK":{"A":"H","B":"J","D":"B","E":"F","G":"A","I":"G","K":"I","L":"K"},"ABEHIJKL":{"A":"E","B":"J","D":"B","E":"A","G":"I","I":"H","K":"L","L":"K"},"ABEGIJKL":{"A":"E","B":"J","D":"B","E":"A","G":"I","I":"G","K":"L","L":"K"},"ABEGHJKL":{"A":"E","B":"J","D":"B","E":"A","G":"H","I":"G","K":"L","L":"K"},"ABEGHIKL":{"A":"E","B":"G","D":"B","E":"A","G":"I","I":"H","K":"L","L":"K"},"ABEGHIJL":{"A":"E","B":"J","D":"B","E":"A","G":"H","I":"G","K":"L","L":"I"},"ABEGHIJK":{"A":"E","B":"J","D":"B","E":"A","G":"H","I":"G","K":"I","L":"K"},"ABEFIJKL":{"A":"E","B":"J","D":"B","E":"A","G":"I","I":"F","K":"L","L":"K"},"ABEFHJKL":{"A":"E","B":"J","D":"B","E":"F","G":"A","I":"H","K":"L","L":"K"},"ABEFHIKL":{"A":"E","B":"I","D":"B","E":"F","G":"A","I":"H","K":"L","L":"K"},"ABEFHIJL":{"A":"E","B":"J","D":"B","E":"F","G":"A","I":"H","K":"L","L":"I"},"ABEFHIJK":{"A":"E","B":"J","D":"B","E":"F","G":"A","I":"H","K":"I","L":"K"},"ABEFGJKL":{"A":"E","B":"J","D":"B","E":"F","G":"A","I":"G","K":"L","L":"K"},"ABEFGIKL":{"A":"E","B":"G","D":"B","E":"A","G":"I","I":"F","K":"L","L":"K"},"ABEFGIJL":{"A":"E","B":"J","D":"B","E":"F","G":"A","I":"G","K":"L","L":"I"},"ABEFGIJK":{"A":"E","B":"J","D":"B","E":"F","G":"A","I":"G","K":"I","L":"K"},"ABEFGHKL":{"A":"E","B":"G","D":"B","E":"F","G":"A","I":"H","K":"L","L":"K"},"ABEFGHJL":{"A":"H","B":"J","D":"B","E":"F","G":"A","I":"G","K":"L","L":"E"},"ABEFGHJK":{"A":"H","B":"J","D":"B","E":"F","G":"A","I":"G","K":"E","L":"K"},"ABEFGHIL":{"A":"E","B":"G","D":"B","E":"F","G":"A","I":"H","K":"L","L":"I"},"ABEFGHIK":{"A":"E","B":"G","D":"B","E":"F","G":"A","I":"H","K":"I","L":"K"},"ABEFGHIJ":{"A":"H","B":"J","D":"B","E":"F","G":"A","I":"G","K":"E","L":"I"},"ABDHIJKL":{"A":"I","B":"J","D":"B","E":"D","G":"A","I":"H","K":"L","L":"K"},"ABDGIJKL":{"A":"I","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"K"},"ABDGHJKL":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"K"},"ABDGHIKL":{"A":"I","B":"G","D":"B","E":"D","G":"A","I":"H","K":"L","L":"K"},"ABDGHIJL":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"I"},"ABDGHIJK":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"G","K":"I","L":"K"},"ABDFIJKL":{"A":"I","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDFHJKL":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDFHIKL":{"A":"H","B":"I","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDFHIJL":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"I"},"ABDFHIJK":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"F","K":"I","L":"K"},"ABDFGJKL":{"A":"F","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"K"},"ABDFGIKL":{"A":"I","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDFGIJL":{"A":"F","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"I"},"ABDFGIJK":{"A":"F","B":"J","D":"B","E":"D","G":"A","I":"G","K":"I","L":"K"},"ABDFGHKL":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDFGHJL":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"J"},"ABDFGHJK":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"J","L":"K"},"ABDFGHIL":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"I"},"ABDFGHIK":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"I","L":"K"},"ABDFGHIJ":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"I","L":"J"},"ABDEIJKL":{"A":"E","B":"J","D":"B","E":"A","G":"I","I":"D","K":"L","L":"K"},"ABDEHJKL":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"H","K":"L","L":"K"},"ABDEHIKL":{"A":"E","B":"I","D":"B","E":"D","G":"A","I":"H","K":"L","L":"K"},"ABDEHIJL":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"H","K":"L","L":"I"},"ABDEHIJK":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"H","K":"I","L":"K"},"ABDEGJKL":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"K"},"ABDEGIKL":{"A":"E","B":"G","D":"B","E":"A","G":"I","I":"D","K":"L","L":"K"},"ABDEGIJL":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"I"},"ABDEGIJK":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"G","K":"I","L":"K"},"ABDEGHKL":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"H","K":"L","L":"K"},"ABDEGHJL":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"E"},"ABDEGHJK":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"G","K":"E","L":"K"},"ABDEGHIL":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"H","K":"L","L":"I"},"ABDEGHIK":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"H","K":"I","L":"K"},"ABDEGHIJ":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"G","K":"E","L":"I"},"ABDEFJKL":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDEFIKL":{"A":"E","B":"I","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDEFIJL":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"I"},"ABDEFIJK":{"A":"E","B":"J","D":"B","E":"D","G":"A","I":"F","K":"I","L":"K"},"ABDEFHKL":{"A":"H","B":"E","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDEFHJL":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"E"},"ABDEFHJK":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"F","K":"E","L":"K"},"ABDEFHIL":{"A":"H","B":"E","D":"B","E":"D","G":"A","I":"F","K":"L","L":"I"},"ABDEFHIK":{"A":"H","B":"E","D":"B","E":"D","G":"A","I":"F","K":"I","L":"K"},"ABDEFHIJ":{"A":"H","B":"J","D":"B","E":"D","G":"A","I":"F","K":"E","L":"I"},"ABDEFGKL":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABDEFGJL":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"J"},"ABDEFGJK":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"F","K":"J","L":"K"},"ABDEFGIL":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"I"},"ABDEFGIK":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"F","K":"I","L":"K"},"ABDEFGIJ":{"A":"E","B":"G","D":"B","E":"D","G":"A","I":"F","K":"I","L":"J"},"ABDEFGHL":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"E"},"ABDEFGHK":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"E","L":"K"},"ABDEFGHJ":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"E","L":"J"},"ABDEFGHI":{"A":"H","B":"G","D":"B","E":"D","G":"A","I":"F","K":"E","L":"I"},"ABCHIJKL":{"A":"I","B":"J","D":"B","E":"C","G":"A","I":"H","K":"L","L":"K"},"ABCGIJKL":{"A":"I","B":"J","D":"B","E":"C","G":"A","I":"G","K":"L","L":"K"},"ABCGHJKL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"G","K":"L","L":"K"},"ABCGHIKL":{"A":"I","B":"G","D":"B","E":"C","G":"A","I":"H","K":"L","L":"K"},"ABCGHIJL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"G","K":"L","L":"I"},"ABCGHIJK":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"G","K":"I","L":"K"},"ABCFIJKL":{"A":"I","B":"J","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCFHJKL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCFHIKL":{"A":"H","B":"I","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCFHIJL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"L","L":"I"},"ABCFHIJK":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"I","L":"K"},"ABCFGJKL":{"A":"C","B":"J","D":"B","E":"F","G":"A","I":"G","K":"L","L":"K"},"ABCFGIKL":{"A":"I","B":"G","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCFGIJL":{"A":"C","B":"J","D":"B","E":"F","G":"A","I":"G","K":"L","L":"I"},"ABCFGIJK":{"A":"C","B":"J","D":"B","E":"F","G":"A","I":"G","K":"I","L":"K"},"ABCFGHKL":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCFGHJL":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"L","L":"J"},"ABCFGHJK":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"J","L":"K"},"ABCFGHIL":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"L","L":"I"},"ABCFGHIK":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"I","L":"K"},"ABCFGHIJ":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"I","L":"J"},"ABCEIJKL":{"A":"E","B":"J","D":"B","E":"A","G":"I","I":"C","K":"L","L":"K"},"ABCEHJKL":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"H","K":"L","L":"K"},"ABCEHIKL":{"A":"E","B":"I","D":"B","E":"C","G":"A","I":"H","K":"L","L":"K"},"ABCEHIJL":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"H","K":"L","L":"I"},"ABCEHIJK":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"H","K":"I","L":"K"},"ABCEGJKL":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"G","K":"L","L":"K"},"ABCEGIKL":{"A":"E","B":"G","D":"B","E":"A","G":"I","I":"C","K":"L","L":"K"},"ABCEGIJL":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"G","K":"L","L":"I"},"ABCEGIJK":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"G","K":"I","L":"K"},"ABCEGHKL":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"H","K":"L","L":"K"},"ABCEGHJL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"G","K":"L","L":"E"},"ABCEGHJK":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"G","K":"E","L":"K"},"ABCEGHIL":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"H","K":"L","L":"I"},"ABCEGHIK":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"H","K":"I","L":"K"},"ABCEGHIJ":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"G","K":"E","L":"I"},"ABCEFJKL":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCEFIKL":{"A":"E","B":"I","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCEFIJL":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"F","K":"L","L":"I"},"ABCEFIJK":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"F","K":"I","L":"K"},"ABCEFHKL":{"A":"H","B":"E","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCEFHJL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"L","L":"E"},"ABCEFHJK":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"E","L":"K"},"ABCEFHIL":{"A":"H","B":"E","D":"B","E":"C","G":"A","I":"F","K":"L","L":"I"},"ABCEFHIK":{"A":"H","B":"E","D":"B","E":"C","G":"A","I":"F","K":"I","L":"K"},"ABCEFHIJ":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"E","L":"I"},"ABCEFGKL":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"F","K":"L","L":"K"},"ABCEFGJL":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"F","K":"L","L":"J"},"ABCEFGJK":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"F","K":"J","L":"K"},"ABCEFGIL":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"F","K":"L","L":"I"},"ABCEFGIK":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"F","K":"I","L":"K"},"ABCEFGIJ":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"F","K":"I","L":"J"},"ABCEFGHL":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"L","L":"E"},"ABCEFGHK":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"E","L":"K"},"ABCEFGHJ":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"E","L":"J"},"ABCEFGHI":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"E","L":"I"},"ABCDIJKL":{"A":"I","B":"J","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDHJKL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDHIKL":{"A":"H","B":"I","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDHIJL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"D","K":"L","L":"I"},"ABCDHIJK":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"D","K":"I","L":"K"},"ABCDGJKL":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"K"},"ABCDGIKL":{"A":"I","B":"G","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDGIJL":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"G","K":"L","L":"I"},"ABCDGIJK":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"G","K":"I","L":"K"},"ABCDGHKL":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDGHJL":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"L","L":"J"},"ABCDGHJK":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"J","L":"K"},"ABCDGHIL":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"L","L":"I"},"ABCDGHIK":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"I","L":"K"},"ABCDGHIJ":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"I","L":"J"},"ABCDFJKL":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABCDFIKL":{"A":"C","B":"I","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABCDFIJL":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"I"},"ABCDFIJK":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"F","K":"I","L":"K"},"ABCDFHKL":{"A":"H","B":"F","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDFHJL":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"H"},"ABCDFHJK":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"D","L":"K"},"ABCDFHIL":{"A":"H","B":"F","D":"B","E":"C","G":"A","I":"D","K":"L","L":"I"},"ABCDFHIK":{"A":"H","B":"F","D":"B","E":"C","G":"A","I":"D","K":"I","L":"K"},"ABCDFHIJ":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"D","L":"I"},"ABCDFGKL":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABCDFGJL":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"J"},"ABCDFGJK":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"J","L":"K"},"ABCDFGIL":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"I"},"ABCDFGIK":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"I","L":"K"},"ABCDFGIJ":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"I","L":"J"},"ABCDFGHL":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"H"},"ABCDFGHK":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"D","L":"K"},"ABCDFGHJ":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"D","L":"J"},"ABCDFGHI":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"D","L":"I"},"ABCDEJKL":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDEIKL":{"A":"E","B":"I","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDEIJL":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"D","K":"L","L":"I"},"ABCDEIJK":{"A":"E","B":"J","D":"B","E":"C","G":"A","I":"D","K":"I","L":"K"},"ABCDEHKL":{"A":"H","B":"E","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDEHJL":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"D","K":"L","L":"E"},"ABCDEHJK":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"D","K":"E","L":"K"},"ABCDEHIL":{"A":"H","B":"E","D":"B","E":"C","G":"A","I":"D","K":"L","L":"I"},"ABCDEHIK":{"A":"H","B":"E","D":"B","E":"C","G":"A","I":"D","K":"I","L":"K"},"ABCDEHIJ":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"D","K":"E","L":"I"},"ABCDEGKL":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"D","K":"L","L":"K"},"ABCDEGJL":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"D","K":"L","L":"J"},"ABCDEGJK":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"D","K":"J","L":"K"},"ABCDEGIL":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"D","K":"L","L":"I"},"ABCDEGIK":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"D","K":"I","L":"K"},"ABCDEGIJ":{"A":"E","B":"G","D":"B","E":"C","G":"A","I":"D","K":"I","L":"J"},"ABCDEGHL":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"L","L":"E"},"ABCDEGHK":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"E","L":"K"},"ABCDEGHJ":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"E","L":"J"},"ABCDEGHI":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"D","K":"E","L":"I"},"ABCDEFKL":{"A":"C","B":"E","D":"B","E":"D","G":"A","I":"F","K":"L","L":"K"},"ABCDEFJL":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"F","K":"L","L":"E"},"ABCDEFJK":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"F","K":"E","L":"K"},"ABCDEFIL":{"A":"C","B":"E","D":"B","E":"D","G":"A","I":"F","K":"L","L":"I"},"ABCDEFIK":{"A":"C","B":"E","D":"B","E":"D","G":"A","I":"F","K":"I","L":"K"},"ABCDEFIJ":{"A":"C","B":"J","D":"B","E":"D","G":"A","I":"F","K":"E","L":"I"},"ABCDEFHL":{"A":"H","B":"F","D":"B","E":"C","G":"A","I":"D","K":"L","L":"E"},"ABCDEFHK":{"A":"H","B":"E","D":"B","E":"C","G":"A","I":"F","K":"D","L":"K"},"ABCDEFHJ":{"A":"H","B":"J","D":"B","E":"C","G":"A","I":"F","K":"D","L":"E"},"ABCDEFHI":{"A":"H","B":"E","D":"B","E":"C","G":"A","I":"F","K":"D","L":"I"},"ABCDEFGL":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"L","L":"E"},"ABCDEFGK":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"E","L":"K"},"ABCDEFGJ":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"E","L":"J"},"ABCDEFGI":{"A":"C","B":"G","D":"B","E":"D","G":"A","I":"F","K":"E","L":"I"},"ABCDEFGH":{"A":"H","B":"G","D":"B","E":"C","G":"A","I":"F","K":"D","L":"E"}};
+
+/* DATA */
+const FLAG={"Mexico":"🇲🇽","South Africa":"🇿🇦","South Korea":"🇰🇷","Czechia":"🇨🇿","Canada":"🇨🇦","Bosnia & Herzegovina":"🇧🇦","Qatar":"🇶🇦","Switzerland":"🇨🇭","Brazil":"🇧🇷","Morocco":"🇲🇦","Haiti":"🇭🇹","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","United States":"🇺🇸","Paraguay":"🇵🇾","Australia":"🇦🇺","Turkey":"🇹🇷","Germany":"🇩🇪","Curaçao":"🇨🇼","Côte d'Ivoire":"🇨🇮","Ecuador":"🇪🇨","Netherlands":"🇳🇱","Japan":"🇯🇵","Sweden":"🇸🇪","Tunisia":"🇹🇳","Belgium":"🇧🇪","Egypt":"🇪🇬","Iran":"🇮🇷","New Zealand":"🇳🇿","Spain":"🇪🇸","Cape Verde":"🇨🇻","Saudi Arabia":"🇸🇦","Uruguay":"🇺🇾","France":"🇫🇷","Senegal":"🇸🇳","Iraq":"🇮🇶","Norway":"🇳🇴","Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴","Portugal":"🇵🇹","DR Congo":"🇨🇩","Uzbekistan":"🇺🇿","Colombia":"🇨🇴","England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatia":"🇭🇷","Ghana":"🇬🇭","Panama":"🇵🇦"};
+const DEFAULT_ELO={"Mexico":1790,"South Africa":1640,"South Korea":1790,"Czechia":1780,"Canada":1760,"Bosnia & Herzegovina":1710,"Qatar":1660,"Switzerland":1897,"Brazil":1979,"Morocco":1850,"Haiti":1540,"Scotland":1790,"United States":1770,"Paraguay":1730,"Australia":1720,"Turkey":1880,"Germany":1910,"Curaçao":1530,"Côte d'Ivoire":1735,"Ecuador":1933,"Netherlands":1959,"Japan":1879,"Sweden":1800,"Tunisia":1680,"Belgium":1849,"Egypt":1700,"Iran":1810,"New Zealand":1500,"Spain":2171,"Cape Verde":1620,"Saudi Arabia":1640,"Uruguay":1890,"France":2063,"Senegal":1869,"Iraq":1610,"Norway":1922,"Argentina":2113,"Algeria":1740,"Austria":1790,"Jordan":1620,"Portugal":1976,"DR Congo":1690,"Uzbekistan":1670,"Colombia":1998,"England":2042,"Croatia":1933,"Ghana":1685,"Panama":1680};
+const HOSTS={"Mexico":1,"Canada":1,"United States":1};
+const GROUPS="ABCDEFGHIJKL".split("");
+const GROUP_TEAMS={A:["Mexico","South Africa","South Korea","Czechia"],B:["Canada","Bosnia & Herzegovina","Qatar","Switzerland"],C:["Brazil","Morocco","Haiti","Scotland"],D:["United States","Paraguay","Australia","Turkey"],E:["Germany","Curaçao","Côte d'Ivoire","Ecuador"],F:["Netherlands","Japan","Sweden","Tunisia"],G:["Belgium","Egypt","Iran","New Zealand"],H:["Spain","Cape Verde","Saudi Arabia","Uruguay"],I:["France","Senegal","Iraq","Norway"],J:["Argentina","Algeria","Austria","Jordan"],K:["Portugal","DR Congo","Uzbekistan","Colombia"],L:["England","Croatia","Ghana","Panama"]};
+const PAIRS=[[0,1,1],[2,3,1],[0,2,2],[3,1,2],[3,0,3],[1,2,3]];
+const SLOT_ORDER=["A","B","D","E","G","I","K","L"];
+const ALLTEAMS=[];GROUPS.forEach(g=>GROUP_TEAMS[g].forEach(n=>ALLTEAMS.push(n)));
+function groupOf(n){for(const g of GROUPS)if(GROUP_TEAMS[g].includes(n))return g;}
+
+/* STATE + PERSISTENCE */
+const LS="wc26m_v1", LSR="wc26m_results", LSC="wc26m_code";
+let state={elo:{},locked:{},lockedKO:{},params:{ha:80,mu:2.70,tb:"h2h"},snapshots:[]};
+let results=null, applyingRemote=false, syncTimer=null;
+function loadState(){
+  Object.assign(state.elo,DEFAULT_ELO);
+  try{const s=JSON.parse(localStorage.getItem(LS));if(s){state.elo=Object.assign({},DEFAULT_ELO,s.elo||{});state.locked=s.locked||{};state.lockedKO=s.lockedKO||{};state.params=Object.assign({ha:80,mu:2.70,tb:"h2h"},s.params||{});state.snapshots=s.snapshots||[];}}catch(e){}
+  try{const r=JSON.parse(localStorage.getItem(LSR));if(r)results=r;}catch(e){}
+}
+function saveState(){
+  try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}
+  if(!applyingRemote && window.Sync && window.Sync.enabled && window.Sync.code){
+    clearTimeout(syncTimer); syncTimer=setTimeout(()=>window.Sync.push(getSyncState()),600);
+  }
+}
+function saveResults(){try{localStorage.setItem(LSR,JSON.stringify(results));}catch(e){}}
+window.getSyncState=()=>JSON.parse(JSON.stringify({locked:state.locked,lockedKO:state.lockedKO,elo:state.elo,params:state.params,snapshots:state.snapshots}));
+window.getSyncCode=()=>{try{return localStorage.getItem(LSC)||"";}catch(e){return "";}};
+window.applyRemote=(data)=>{
+  if(!data)return; applyingRemote=true;
+  if(data.elo)state.elo=Object.assign({},DEFAULT_ELO,data.elo);
+  if(data.locked)state.locked=data.locked; if(data.lockedKO)state.lockedKO=data.lockedKO;
+  if(data.params)state.params=Object.assign({ha:80,mu:2.70,tb:"h2h"},data.params);
+  if(data.snapshots)state.snapshots=data.snapshots;
+  saveState(); applyingRemote=false;
+  rerender(); toast("Synced from another device");
+};
+
+/* ENGINE (validated) */
+let MU=2.70,HA=80,TB="h2h";
+function poissonPmf(l,k){let p=Math.exp(-l);for(let i=1;i<=k;i++)p*=l/i;return p;}
+function wdl(l1,l2){let pw=0,pd=0,M=12;const a=[],b=[];for(let k=0;k<=M;k++){a[k]=poissonPmf(l1,k);b[k]=poissonPmf(l2,k);}for(let x=0;x<=M;x++)for(let y=0;y<=M;y++){const pr=a[x]*b[y];if(x>y)pw+=pr;else if(x===y)pd+=pr;}return pw+0.5*pd;}
+const LUTN=1201;let sLut=new Float64Array(LUTN);
+function buildLUT(){for(let i=0;i<LUTN;i++){const we=i/(LUTN-1);let lo=-6,hi=6;for(let it=0;it<38;it++){const m=(lo+hi)/2;const l1=Math.max(.01,(MU+m)/2),l2=Math.max(.01,(MU-m)/2);(wdl(l1,l2)<we)?lo=m:hi=m;}sLut[i]=(lo+hi)/2;}}
+function sFromWe(we){let i=(we*(LUTN-1)+.5)|0;if(i<0)i=0;if(i>LUTN-1)i=LUTN-1;return sLut[i];}
+function expScore(ea,eb,ha){return 1/(1+Math.pow(10,-(ea-eb+ha)/400));}
+let seed=88172645>>>0;
+function srand(s){seed=(s>>>0)||1;}
+function rnd(){seed^=seed<<13;seed>>>=0;seed^=seed>>17;seed^=seed<<5;seed>>>=0;return seed/4294967296;}
+function poi(l){if(l<=0)return 0;const L=Math.exp(-l);let k=0,p=1;do{k++;p*=rnd();}while(p>L);return k-1;}
+function hadj(a,b){let h=0;if(a.host&&!b.host)h+=HA;if(b.host&&!a.host)h-=HA;return h;}
+function sampleScore(a,b){const we=expScore(a.elo,b.elo,hadj(a,b));const s=sFromWe(we);return [poi(Math.max(.02,(MU+s)/2)),poi(Math.max(.02,(MU-s)/2))];}
+function koWin(a,b){return rnd()<expScore(a.elo,b.elo,hadj(a,b))?a:b;}
+function mkTeam(n){return {name:n,elo:state.elo[n],host:!!HOSTS[n]};}
+function simGroup(g){
+  const T=GROUP_TEAMS[g].map(n=>({name:n,elo:state.elo[n],host:!!HOSTS[n],pts:0,gf:0,ga:0,h:{}}));
+  for(const [i,j] of PAIRS){const a=T[i],b=T[j];let x,y;const key=g+"-"+i+"-"+j;const lk=state.locked[key];
+    if(lk){x=lk[0];y=lk[1];}else{const sc=sampleScore(a,b);x=sc[0];y=sc[1];}
+    a.gf+=x;a.ga+=y;b.gf+=y;b.ga+=x;
+    if(x>y)a.pts+=3;else if(y>x)b.pts+=3;else{a.pts++;b.pts++;}
+    a.h[b.name]={p:x>y?3:(x===y?1:0),gd:x-y,gf:x};b.h[a.name]={p:y>x?3:(x===y?1:0),gd:y-x,gf:y};}
+  T.sort((A,B)=>B.pts-A.pts);
+  const out=[];let i=0;while(i<T.length){let j=i;while(j<T.length&&T[j].pts===T[i].pts)j++;let sub=T.slice(i,j);if(sub.length>1)sub.sort((A,B)=>cmpTie(A,B,sub));out.push(...sub);i=j;}
+  return out;
+}
+function cmpTie(A,B,sub){const names=sub.map(s=>s.name);
+  const hp=t=>names.reduce((s,n)=>n===t.name?s:s+((t.h[n]&&t.h[n].p)||0),0);
+  const hgd=t=>names.reduce((s,n)=>n===t.name?s:s+((t.h[n]&&t.h[n].gd)||0),0);
+  const hgf=t=>names.reduce((s,n)=>n===t.name?s:s+((t.h[n]&&t.h[n].gf)||0),0);
+  const ogd=t=>t.gf-t.ga;
+  if(TB==="h2h"){if(hp(B)!==hp(A))return hp(B)-hp(A);if(hgd(B)!==hgd(A))return hgd(B)-hgd(A);if(hgf(B)!==hgf(A))return hgf(B)-hgf(A);if(ogd(B)!==ogd(A))return ogd(B)-ogd(A);if(B.gf!==A.gf)return B.gf-A.gf;}
+  else{if(ogd(B)!==ogd(A))return ogd(B)-ogd(A);if(B.gf!==A.gf)return B.gf-A.gf;if(hp(B)!==hp(A))return hp(B)-hp(A);if(hgd(B)!==hgd(A))return hgd(B)-hgd(A);if(hgf(B)!==hgf(A))return hgf(B)-hgf(A);}
+  return rnd()-0.5;
+}
+function simTournament(acc){
+  const W={},R={};const thirds=[];
+  for(const g of GROUPS){const r=simGroup(g);W[g]=r[0];R[g]=r[1];
+    for(let p=0;p<4;p++){const t=acc.t[r[p].name];t.pos[p]++;t.epts+=r[p].pts;t.egf+=r[p].gf;t.ega+=r[p].ga;}
+    thirds.push({name:r[2].name,group:g,pts:r[2].pts,gd:r[2].gf-r[2].ga,gf:r[2].gf});}
+  thirds.sort((A,B)=>{if(B.pts!==A.pts)return B.pts-A.pts;if(B.gd!==A.gd)return B.gd-A.gd;if(B.gf!==A.gf)return B.gf-A.gf;return rnd()-0.5;});
+  const best8=thirds.slice(0,8);for(const b of best8)acc.t[b.name].adv3++;
+  const key=best8.map(t=>t.group).sort().join("");const map=THIRD_TABLE[key];
+  const t3byG={};for(const b of best8)t3byG[b.group]=mkTeam(b.name);
+  const slot3={};for(const s of SLOT_ORDER)slot3[s]=t3byG[map[s]];
+  const w=g=>mkTeam(W[g].name),r=g=>mkTeam(R[g].name);const m={};
+  m[73]={a:r("A"),b:r("B")};m[74]={a:w("E"),b:slot3.E};m[75]={a:w("F"),b:r("C")};m[76]={a:w("C"),b:r("F")};
+  m[77]={a:w("I"),b:slot3.I};m[78]={a:r("E"),b:r("I")};m[79]={a:w("A"),b:slot3.A};m[80]={a:w("L"),b:slot3.L};
+  m[81]={a:w("D"),b:slot3.D};m[82]={a:w("G"),b:slot3.G};m[83]={a:r("K"),b:r("L")};m[84]={a:w("H"),b:r("J")};
+  m[85]={a:w("B"),b:slot3.B};m[86]={a:w("J"),b:r("H")};m[87]={a:w("K"),b:slot3.K};m[88]={a:r("D"),b:r("G")};
+  const R32=[73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88];
+  for(const id of R32){const M=m[id];const sf=acc.slot[id];sf.a[M.a.name]=(sf.a[M.a.name]||0)+1;sf.b[M.b.name]=(sf.b[M.b.name]||0)+1;M.w=applyKO(id,M.a,M.b);}
+  const R16=[[89,74,77],[90,73,75],[91,76,78],[92,79,80],[93,83,84],[94,81,82],[95,86,88],[96,85,87]];
+  for(const [id,x,y] of R16){m[id]={a:m[x].w,b:m[y].w};m[id].w=applyKO(id,m[id].a,m[id].b);}
+  const QF=[[97,89,90],[98,93,94],[99,91,92],[100,95,96]];
+  for(const [id,x,y] of QF){m[id]={a:m[x].w,b:m[y].w};m[id].w=applyKO(id,m[id].a,m[id].b);}
+  const SF=[[101,97,98],[102,99,100]];
+  for(const [id,x,y] of SF){m[id]={a:m[x].w,b:m[y].w};m[id].w=applyKO(id,m[id].a,m[id].b);}
+  m[104]={a:m[101].w,b:m[102].w};m[104].w=applyKO(104,m[104].a,m[104].b);
+  for(const id of [89,90,91,92,93,94,95,96,97,98,99,100,101,102,104]){const M=m[id],sf=acc.slot[id];if(sf){sf.a[M.a.name]=(sf.a[M.a.name]||0)+1;sf.b[M.b.name]=(sf.b[M.b.name]||0)+1;}}
+  for(const g of GROUPS){acc.t[W[g].name].qual++;acc.t[R[g].name].qual++;}
+  for(const b of best8)acc.t[b.name].qual++;
+  for(const id of [89,90,91,92,93,94,95,96]){acc.t[m[id].a.name].r16++;acc.t[m[id].b.name].r16++;}
+  for(const id of [97,98,99,100]){acc.t[m[id].a.name].qf++;acc.t[m[id].b.name].qf++;}
+  for(const id of [101,102]){acc.t[m[id].a.name].sf++;acc.t[m[id].b.name].sf++;}
+  acc.t[m[104].a.name].final++;acc.t[m[104].b.name].final++;acc.t[m[104].w.name].champ++;
+}
+function applyKO(id,a,b){const lk=state.lockedKO[id];if(lk){if(lk===a.name)return a;if(lk===b.name)return b;}return koWin(a,b);}
+function newAcc(){const t={};for(const n of ALLTEAMS)t[n]={pos:[0,0,0,0],adv3:0,qual:0,r16:0,qf:0,sf:0,final:0,champ:0,epts:0,egf:0,ega:0};const slot={};for(const id of [73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,104])slot[id]={a:{},b:{}};return {t,slot,n:0};}
+let running=false;
+function runMC(N,done){
+  if(running)return;running=true;
+  MU=state.params.mu;HA=state.params.ha;TB=state.params.tb;buildLUT();
+  srand((Date.now()^(N*2654435761))>>>0);
+  const acc=newAcc();let dn=0;const batch=Math.max(500,(N/40)|0);const prog=document.querySelector("#progress>div");
+  function step(){const end=Math.min(dn+batch,N);for(;dn<end;dn++)simTournament(acc);acc.n=dn;prog.style.width=(100*dn/N)+"%";
+    if(dn<N)setTimeout(step,0);else{running=false;prog.style.width="0%";done(acc);}}
+  step();
+}
+
+/* UI HELPERS */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+function esc(s){return (""+s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+function pct(x,n){return 100*x/n;}
+function fmt(p){return p>=99.95?"100":(p<0.05&&p>0?"<0.1":p.toFixed(1));}
+function flag(n){var e=FLAG[n]||"";if(!e)return"";var cp=[];for(var ch of e){var c=ch.codePointAt(0);if(c!==0xFE0F)cp.push(c.toString(16));}return '<img class="flag" loading="lazy" style="height:14px;width:auto;vertical-align:-2px" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/svg/'+cp.join("-")+'.svg">';}
+let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1900);}
+const METRICS=[["champ","Win"],["final","Final"],["sf","Semis"],["qf","Quarters"],["r16","Last 32→16"],["qualify","Qualify"],["p1","Win group"]];
+let curMetric="champ";
+
+/* RENDER: ODDS */
+function renderOdds(){
+  const cc=$("#champchart"),lb=$("#leaderboard");
+  if(!results){$("#odds-sub").textContent="";cc.innerHTML=emptyRun();lb.innerHTML="";$("#metricseg").innerHTML="";return;}
+  const n=results.n;$("#odds-sub").textContent=n.toLocaleString()+" sims";
+  const arr=ALLTEAMS.map(t=>({n:t,...results.t[t]}));
+  const top=[...arr].sort((a,b)=>b.champ-a.champ).slice(0,10);const mx=Math.max(...top.map(t=>t.champ))||1;
+  cc.innerHTML=top.map(t=>`<div class="crow"><div class="nm">${flag(t.n)}${esc(t.n)}</div><div class="bar"><div style="width:${100*t.champ/mx}%"></div></div><div class="v">${fmt(pct(t.champ,n))}%</div></div>`).join("");
+  // metric seg
+  $("#metricseg").innerHTML=METRICS.map(m=>`<div class="seg ${m[0]===curMetric?'on':''}" data-m="${m[0]}">${m[1]}</div>`).join("");
+  $$("#metricseg .seg").forEach(s=>s.onclick=()=>{curMetric=s.dataset.m;renderOdds();});
+  const val=t=>curMetric==="p1"?t.pos[0]:curMetric==="qualify"?t.qual:t[curMetric];
+  const col=({champ:"var(--lime)",final:"var(--mag)",sf:"var(--mag)",qf:"var(--cyan)",r16:"var(--cyan)",qualify:"var(--grn)",p1:"var(--amber)"})[curMetric];
+  arr.sort((a,b)=>val(b)-val(a));
+  lb.innerHTML=arr.map((t,i)=>{const p=pct(val(t),n);
+    return `<div class="lrow" data-team="${esc(t.n)}"><div class="rk">${i+1}</div>`+
+    `<div class="who"><div class="n1">${flag(t.n)}${esc(t.n)}</div><div class="n2"><span class="gtag">${groupOf(t.n)}</span> &nbsp;Elo ${state.elo[t.n]}</div></div>`+
+    `<div class="track"><div style="width:${Math.min(100,p)}%;background:${col}"></div></div>`+
+    `<div class="pv" style="color:${col}">${fmt(p)}</div></div>`;}).join("");
+  $$("#leaderboard .lrow").forEach(r=>r.onclick=()=>openTeam(r.dataset.team));
+}
+function emptyRun(){return `<div class="empty">No simulation yet.<br><button class="btn-go bigrun" onclick="document.getElementById('runbtn').click()">▶ Run simulation</button></div>`;}
+
+/* RENDER: GROUPS */
+function renderGroups(){
+  const w=$("#groupwrap");
+  if(!results){w.innerHTML=emptyRun();return;}
+  const n=results.n;let h="";
+  for(const g of GROUPS){
+    const teams=GROUP_TEAMS[g].map(name=>({name,...results.t[name]})).sort((a,b)=>b.qual-a.qual);
+    h+=`<div class="gcard"><h3>Group ${g} <small>P(advance)</small></h3>`;
+    for(const t of teams){const adv=pct(t.qual,n);const cls=adv>=55?'qualbar':(adv>=30?'hopebar':'');
+      h+=`<div class="grow ${cls}" data-team="${esc(t.name)}"><div class="who"><div class="n1">${flag(t.name)}${esc(t.name)} <span class="elo">${state.elo[t.name]}</span></div>`+
+      `<div class="n2">1st ${fmt(pct(t.pos[0],n))} · 2nd ${fmt(pct(t.pos[1],n))} · 3rd ${fmt(pct(t.pos[2],n))} · ${(t.epts/n).toFixed(2)} pts</div></div>`+
+      `<div class="adv"><div class="big" style="color:${adv>=55?'var(--lime)':adv>=30?'var(--amber)':'var(--mut)'}">${fmt(adv)}</div><div class="lab">advance</div></div></div>`;}
+    h+="</div>";
+  }
+  w.innerHTML=h;$$("#groupwrap .grow").forEach(r=>r.onclick=()=>openTeam(r.dataset.team));
+}
+
+/* RENDER: BRACKET */
+function renderBracket(){
+  const w=$("#bracketwrap");
+  if(!results){w.innerHTML=emptyRun();return;}
+  if(!results.slot||!results.slot[104]){w.innerHTML="<div class='empty'>Run a new simulation to build the full bracket projection.<br><button class=\"btn-go bigrun\" onclick=\"document.getElementById('runbtn').click()\">\u25B6 Run simulation</button></div>";return;}
+  const n=results.n;const modal=o=>{let bn="?",bc=-1;for(const k in o)if(o[k]>bc){bc=o[k];bn=k;}return [bn,bc];};
+  const card=id=>{const M=results.slot[id];if(!M)return"";const [an,ac]=modal(M.a),[bn,bc]=modal(M.b);
+    return `<div class="bm"><div class="ml">MATCH ${id}</div>`+
+    `<div class="t"><span class="nm">${flag(an)}${esc(an)}</span><span class="pp">${fmt(pct(ac,n))}%</span></div>`+
+    `<div class="vs">vs</div>`+
+    `<div class="t"><span class="nm">${flag(bn)}${esc(bn)}</span><span class="pp">${fmt(pct(bc,n))}%</span></div></div>`;};
+  const hdr=t=>`<div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:15px;margin:18px 0 9px;color:var(--lime)">${t}</div>`;
+  const rounds=[["Round of 32",[73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88]],["Round of 16",[89,90,91,92,93,94,95,96]],["Quarter-finals",[97,98,99,100]],["Semi-finals",[101,102]],["Final",[104]]];
+  let h="";
+  for(const [nm,ids] of rounds){h+=hdr(nm)+ids.map(card).join("");}
+  const champ=ALLTEAMS.map(nm=>({nm,c:results.t[nm].champ})).sort((a,b)=>b.c-a.c)[0];
+  h+=hdr("Most likely champion")+`<div class="bm" style="border-color:var(--lime);box-shadow:0 0 0 1px rgba(200,255,61,.5)"><div class="t"><span class="nm" style="font-size:16px">\uD83C\uDFC6 ${flag(champ.nm)}${esc(champ.nm)}</span><span class="pp" style="color:var(--lime)">${fmt(pct(champ.c,n))}%</span></div></div>`;
+  w.innerHTML=h;
+}
+
+/* RENDER: RESULTS */
+function renderResults(){
+  let h="";
+  for(const g of GROUPS){h+=`<div class="gcard"><h3>Group ${g}</h3>`;
+    const ord=[...PAIRS].sort((a,b)=>a[2]-b[2]);
+    for(const [i,j,md] of ord){const ta=GROUP_TEAMS[g][i],tb=GROUP_TEAMS[g][j],key=g+"-"+i+"-"+j;const lk=state.locked[key];
+      h+=`<div class="fx ${lk?'locked':''}" data-key="${key}"><span class="md">MD${md}</span>`+
+      `<span class="ta">${esc(ta)}<span class="flag" style="margin:0 0 0 6px">${FLAG[ta]||""}</span></span>`+
+      `<input type="number" min="0" max="20" inputmode="numeric" data-s="0" value="${lk?lk[0]:''}">`+
+      `<span class="dash">–</span>`+
+      `<input type="number" min="0" max="20" inputmode="numeric" data-s="1" value="${lk?lk[1]:''}">`+
+      `<span class="tb"><span class="flag" style="margin:0 6px 0 0">${FLAG[tb]||""}</span>${esc(tb)}</span></div>`;}
+    h+="</div>";}
+  $("#reswrap").innerHTML=h;
+  $$("#reswrap .fx").forEach(fx=>{const key=fx.dataset.key;const ins=fx.querySelectorAll("input");
+    const upd=()=>{const a=ins[0].value,b=ins[1].value;
+      if(a!==""&&b!==""){state.locked[key]=[Math.max(0,Math.min(20,+a|0)),Math.max(0,Math.min(20,+b|0))];fx.classList.add("locked");}
+      else{delete state.locked[key];fx.classList.remove("locked");}saveState();};
+    ins.forEach(inp=>inp.addEventListener("change",upd));});
+}
+
+/* KNOCKOUT ENTRY */
+let resView="group";
+function switchResView(v){resView=v;$$("#resseg .seg").forEach(s=>s.classList.toggle("on",s.dataset.rv===v));$("#resgroup").classList.toggle("hide",v!=="group");$("#resko").classList.toggle("hide",v!=="ko");if(v==="group")renderResults();else renderKnockout();}
+function renderResultsTab(){switchResView(resView);}
+function knockoutBracket(){
+  TB=state.params.tb;MU=state.params.mu;HA=state.params.ha;srand(20260611);
+  const W={},R={},thirds=[];
+  for(const g of GROUPS){const r=simGroup(g);W[g]=r[0].name;R[g]=r[1].name;thirds.push({name:r[2].name,group:g,pts:r[2].pts,gd:r[2].gf-r[2].ga,gf:r[2].gf});}
+  thirds.sort((A,B)=>{if(B.pts!==A.pts)return B.pts-A.pts;if(B.gd!==A.gd)return B.gd-A.gd;if(B.gf!==A.gf)return B.gf-A.gf;return 0;});
+  const best8=thirds.slice(0,8);const key=best8.map(t=>t.group).sort().join("");const map=THIRD_TABLE[key];
+  const t3={};for(const b of best8)t3[b.group]=b.name;const slot3={};for(const s of SLOT_ORDER)slot3[s]=t3[map[s]];
+  const P={};
+  P[73]={a:R.A,b:R.B};P[74]={a:W.E,b:slot3.E};P[75]={a:W.F,b:R.C};P[76]={a:W.C,b:R.F};
+  P[77]={a:W.I,b:slot3.I};P[78]={a:R.E,b:R.I};P[79]={a:W.A,b:slot3.A};P[80]={a:W.L,b:slot3.L};
+  P[81]={a:W.D,b:slot3.D};P[82]={a:W.G,b:slot3.G};P[83]={a:R.K,b:R.L};P[84]={a:W.H,b:R.J};
+  P[85]={a:W.B,b:slot3.B};P[86]={a:W.J,b:R.H};P[87]={a:W.K,b:slot3.K};P[88]={a:R.D,b:R.G};
+  const win=id=>{const lk=state.lockedKO[id];const p=P[id];if(!p)return null;if(lk&&(lk===p.a||lk===p.b))return lk;return null;};
+  const fd={89:[74,77],90:[73,75],91:[76,78],92:[79,80],93:[83,84],94:[81,82],95:[86,88],96:[85,87],97:[89,90],98:[93,94],99:[91,92],100:[95,96],101:[97,98],102:[99,100],104:[101,102]};
+  for(const id of [89,90,91,92,93,94,95,96,97,98,99,100,101,102,104]){const[x,y]=fd[id];P[id]={a:win(x),b:win(y)};}
+  return {P,win};
+}
+function koTeamRow(id,team,winner){
+  if(!team)return '<div class="t" style="opacity:.5;padding:6px 8px"><span class="nm muted">— awaiting result —</span></div>';
+  const isW=winner===team;
+  return '<div class="t" data-pick="'+esc(team)+'" data-id="'+id+'" style="cursor:pointer;padding:7px 9px;border-radius:8px;border:1px solid '+(isW?'var(--lime)':'var(--line2)')+';background:'+(isW?'rgba(200,255,61,.10)':'transparent')+';margin:2px 0">'+
+    '<span class="nm">'+flag(team)+esc(team)+'</span><span class="pp" style="color:'+(isW?'var(--lime)':'var(--mut2)')+'">'+(isW?'\u2713 won':'tap to pick')+'</span></div>';
+}
+function renderKnockout(){
+  const w=$("#kowrap");const locks=Object.keys(state.locked).length;
+  if(locks<72){w.innerHTML='<div class="empty">Finish the group stage first \u2014 enter all 72 group results to unlock knockout entry.<br><br>'+locks+' / 72 entered.</div>';return;}
+  const {P,win}=knockoutBracket();
+  const rounds=[["Round of 32",[73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88]],["Round of 16",[89,90,91,92,93,94,95,96]],["Quarter-finals",[97,98,99,100]],["Semi-finals",[101,102]],["Final",[104]]];
+  let h='<p class="note" style="margin-top:-2px">Tap the team that won each tie (extra-time &amp; penalties included). Locked winners feed the next round and stay fixed in every new simulation. Tap again to undo.</p>';
+  for(const [name,ids] of rounds){
+    h+='<div style="font-family:\'Bricolage Grotesque\';font-weight:700;font-size:15px;margin:16px 0 9px;color:var(--cyan)">'+name+'</div>';
+    for(const id of ids){const p=P[id];const a=p?p.a:null,b=p?p.b:null;const wn=win(id);
+      h+='<div class="bm"><div class="ml">MATCH '+id+'</div>'+koTeamRow(id,a,wn)+'<div class="vs">vs</div>'+koTeamRow(id,b,wn)+'</div>';}
+  }
+  const champ=win(104);
+  if(champ)h+='<div class="bm" style="border-color:var(--lime);box-shadow:0 0 0 1px rgba(200,255,61,.5);margin-top:14px"><div class="t"><span class="nm" style="font-size:16px">\uD83C\uDFC6 '+flag(champ)+esc(champ)+'</span><span class="pp" style="color:var(--lime)">CHAMPION</span></div></div>';
+  w.innerHTML=h;
+  w.querySelectorAll('[data-pick]').forEach(el=>el.onclick=()=>{const id=+el.dataset.id,team=el.dataset.pick;
+    if(state.lockedKO[id]===team)delete state.lockedKO[id];else state.lockedKO[id]=team;saveState();renderKnockout();});
+}
+$$("#resseg .seg").forEach(s=>s.onclick=()=>switchResView(s.dataset.rv));
+
+/* RENDER: TEAM */
+function fillTeamSel(){const o=ALLTEAMS.slice().sort().map(n=>`<option value="${esc(n)}">${FLAG[n]||""} ${esc(n)} (${groupOf(n)})</option>`).join("");$("#teamsel").innerHTML=o;$("#histteam").innerHTML=o;}
+function openTeam(name){$("#teamsel").value=name;$("#teamov").classList.add("on");renderTeam();}
+function renderTeam(){
+  const name=$("#teamsel").value;if(!name)return;const body=$("#teambody");
+  if(!results){body.innerHTML=emptyRun();return;}
+  const n=results.n,t=results.t[name],g=groupOf(name);
+  const stages=[["Win group",t.pos[0]],["Runner-up",t.pos[1]],["Finish 3rd",t.pos[2]],["Qualify (R32)",t.qual],["Reach R16",t.r16],["Reach quarters",t.qf],["Reach semis",t.sf],["Reach final",t.final],["Win the cup",t.champ]];
+  let h=`<div style="font-size:22px;font-weight:700" class="disp">${flag(name)}${esc(name)}</div>`;
+  h+=`<div class="stats">
+    <div class="stat"><div class="k">Elo</div><div class="v">${state.elo[name]}</div></div>
+    <div class="stat"><div class="k">Group</div><div class="v">${g}</div></div>
+    <div class="stat"><div class="k">Qualify</div><div class="v" style="color:var(--grn)">${fmt(pct(t.qual,n))}%</div></div>
+    <div class="stat"><div class="k">Win cup</div><div class="v" style="color:var(--lime)">${fmt(pct(t.champ,n))}%</div></div>
+    <div class="stat"><div class="k">xPts group</div><div class="v">${(t.epts/n).toFixed(2)}</div></div>
+    <div class="stat"><div class="k">xGF – xGA</div><div class="v" style="font-size:16px">${(t.egf/n).toFixed(2)}–${(t.ega/n).toFixed(2)}</div></div></div>`;
+  h+=`<div class="h" style="margin-top:8px"><h2 class="disp" style="font-size:16px">Run by run</h2></div>`;
+  const mx=Math.max(...stages.map(s=>s[1]))||1;
+  for(const [l,v] of stages)h+=`<div class="path"><div class="l">${l}</div><div class="tk"><div style="width:${100*v/mx}%"></div></div><div class="pv">${fmt(pct(v,n))}%</div></div>`;
+  const snaps=state.snapshots;
+  if(snaps.length>=2){h+=`<hr class="sep"/><div class="h"><h2 class="disp" style="font-size:16px">Odds movement</h2></div>`;
+    h+=`<div class="card" style="margin:0">`+lineChart(snaps.length,[{label:"Win cup",color:"var(--lime)",vals:snaps.map(s=>s.t[name]?100*s.t[name].champ:0)},{label:"Qualify",color:"var(--grn)",vals:snaps.map(s=>s.t[name]?100*s.t[name].qualify:0)}],snaps.map(s=>s.label))+`</div>`;}
+  body.innerHTML=h;
+}
+
+/* RENDER: TRENDS */
+function renderTrends(){
+  const snaps=state.snapshots;const list=$("#snaplist");
+  list.innerHTML=snaps.length?snaps.map((s,i)=>`<div class="snap"><b>#${i+1}</b>&nbsp;${esc(s.label)} <span class="muted">· ${s.nsim.toLocaleString()} sims</span><span class="ts">${s.time}</span><button class="xbtn" data-del="${i}">✕</button></div>`).join(""):"<div class='empty'>No snapshots yet — every run saves one here.</div>";
+  $$('#snaplist [data-del]').forEach(b=>b.onclick=()=>{state.snapshots.splice(+b.dataset.del,1);saveState();renderTrends();});
+  const scope=$("#histscope").value;$("#histteam").classList.toggle("hide",scope!=="one");
+  if(snaps.length<2){$("#histchart").innerHTML="";$("#histlegend").innerHTML="";$("#histnote").textContent="Run at least twice — e.g. before and after entering a result — to see the lines move.";return;}
+  $("#histnote").textContent="Each point is one run, in order. Watch the odds shift as results come in.";
+  const metric=$("#histmetric").value;const mv=(s,nm)=>{const tt=s.t[nm];if(!tt)return 0;return 100*(metric==="p1"?(tt.pos?tt.pos[0]:0):(tt[metric]||0));};
+  let teams;if(scope==="one")teams=[$("#histteam").value];else{const last=snaps[snaps.length-1];teams=ALLTEAMS.map(nm=>({nm,v:mv(last,nm)})).sort((a,b)=>b.v-a.v).slice(0,8).map(x=>x.nm);}
+  const cols=["var(--lime)","var(--cyan)","var(--mag)","var(--amber)","var(--grn)","#9b8cff","#ff8a4d","#5ad1ff"];
+  const series=teams.map((nm,i)=>({label:nm,color:cols[i%cols.length],vals:snaps.map(s=>mv(s,nm))}));
+  $("#histchart").outerHTML=lineChart(snaps.length,series,snaps.map(s=>s.label),"histchart");
+  $("#histlegend").innerHTML=series.map(s=>`<span><i style="background:${s.color}"></i>${FLAG[s.label]||""} ${esc(s.label)}</span>`).join("");
+}
+
+/* SVG LINE CHART */
+function lineChart(npts,series,xlabels,id){
+  const W=720,H=240,pad={l:38,r:12,t:12,b:28};
+  const allv=series.flatMap(s=>s.vals);let mx=Math.max(...allv,1);mx=Math.ceil(mx/10)*10||10;
+  const n=npts;const X=i=>pad.l+(n<=1?0:(i/(n-1))*(W-pad.l-pad.r));const Y=v=>H-pad.b-(v/mx)*(H-pad.t-pad.b);
+  let g="";
+  for(let t=0;t<=mx;t+=mx/5){g+=`<line x1="${pad.l}" y1="${Y(t)}" x2="${W-pad.r}" y2="${Y(t)}" stroke="#22303f"/>`+`<text x="${pad.l-5}" y="${Y(t)+4}" fill="#5e7287" font-size="11" text-anchor="end" font-family="IBM Plex Mono">${t.toFixed(0)}</text>`;}
+  const stepLbl=Math.ceil(n/6);
+  for(let i=0;i<n;i++){if(i%stepLbl&&i!==n-1)continue;g+=`<text x="${X(i)}" y="${H-pad.b+17}" fill="#5e7287" font-size="10" text-anchor="middle" font-family="IBM Plex Mono">${esc((xlabels&&xlabels[i])||('#'+(i+1))).slice(0,8)}</text>`;}
+  for(const s of series){let d="";s.vals.forEach((v,i)=>{d+=(i?"L":"M")+X(i)+" "+Y(v)+" ";});g+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round"/>`;s.vals.forEach((v,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="3" fill="${s.color}"/>`;});}
+  return `<svg class="chart" ${id?'id="'+id+'"':''} viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+}
+
+/* SETTINGS */
+function renderSettings(){
+  $("#set-ha").value=state.params.ha;$("#set-mu").value=state.params.mu;$("#set-tb").value=state.params.tb;
+  $("#synccode").value=window.getSyncCode();
+  let h="";for(const g of GROUPS)for(const nm of GROUP_TEAMS[g])h+=`<div class="ee"><span class="gtag">${g}</span><span class="nm">${flag(nm)}${esc(nm)}</span><input type="number" inputmode="numeric" data-elo="${esc(nm)}" value="${state.elo[nm]}"></div>`;
+  $("#eloedit").innerHTML=h;
+  $$('#eloedit input[data-elo]').forEach(inp=>inp.addEventListener("change",()=>{const v=+inp.value;if(v>=800&&v<=2600){state.elo[inp.dataset.elo]=v;saveState();}}));
+  updateSyncUI();
+}
+function updateSyncUI(){
+  const S=window.Sync||{status:"off"};const dot=$("#syncdot"),txt=$("#syncstatus"),note=$("#syncnote"),badge=$("#syncbadge");
+  let cls="",msg="",bcls="",nt="";
+  switch(S.status){
+    case "synced":cls="ok";bcls="ok";msg="Synced ✓ — code “"+(S.code||"")+"”. Changes flow across devices in real time.";nt="Use this same code on every device to share results, Elo edits and history.";break;
+    case "connecting":cls="con";bcls="con";msg="Connecting…";break;
+    case "nocode":cls="warn";bcls="warn";msg="Firebase ready — enter a sync code to start.";nt="Pick any code (e.g. your name + wc26) and tap Save. Enter the same code on your other devices.";break;
+    case "error":cls="err";bcls="err";msg="Sync error: "+(S.errMsg||"unknown");nt="Check your Firebase config and Firestore rules, then reload.";break;
+    default:cls="";bcls="";msg="Cloud sync not configured.";nt="Add your Firebase config to the file (see the marked CONFIG block) to enable real-time sync across devices. Until then, data is saved only in this browser.";
+  }
+  if(dot){dot.className="dot "+cls;}if(badge){badge.className="dot "+bcls;}if(txt)txt.textContent=msg;if(note)note.textContent=nt;
+}
+window.Sync=window.Sync||{enabled:false,status:"off",code:null,errMsg:"",connect(){},push(){},fireStatus(){updateSyncUI();}};
+
+function bindSettings(){
+  $("#set-ha").addEventListener("change",e=>{state.params.ha=+e.target.value;saveState();});
+  $("#set-mu").addEventListener("change",e=>{let v=+e.target.value;if(v<1)v=1;if(v>5)v=5;state.params.mu=v;e.target.value=v;saveState();});
+  $("#set-tb").addEventListener("change",e=>{state.params.tb=e.target.value;saveState();});
+  $("#resetelo").onclick=()=>{state.elo=Object.assign({},DEFAULT_ELO);saveState();renderSettings();toast("Elo reset");};
+  $("#savecode").onclick=()=>{const c=$("#synccode").value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,"");$("#synccode").value=c;try{localStorage.setItem(LSC,c);}catch(e){}
+    if(window.Sync&&window.Sync.connect)window.Sync.connect(c);toast(c?"Connecting to “"+c+"”":"Sync code cleared");};
+  $("#exportbtn").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="wc26-sim-backup.json";a.click();toast("Exported");};
+  $("#importbtn").onclick=()=>$("#importfile").click();
+  $("#importfile").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);state.elo=Object.assign({},DEFAULT_ELO,s.elo||{});state.locked=s.locked||{};state.lockedKO=s.lockedKO||{};state.params=Object.assign({ha:80,mu:2.70,tb:"h2h"},s.params||{});state.snapshots=s.snapshots||[];saveState();toast("Imported");rerender();renderSettings();}catch(err){toast("Invalid file");}};r.readAsText(f);});
+  $("#resetall").onclick=()=>{if(confirm("Reset everything on this device?")){try{localStorage.removeItem(LS);localStorage.removeItem(LSR);}catch(e){}location.reload();}};
+}
+
+/* SNAPSHOT */
+function takeSnapshot(acc){
+  const r4=x=>Math.round(x*1e4)/1e4;const lite={};
+  for(const n of ALLTEAMS){const t=acc.t[n];lite[n]={champ:r4(t.champ/acc.n),final:r4(t.final/acc.n),sf:r4(t.sf/acc.n),qf:r4(t.qf/acc.n),r16:r4(t.r16/acc.n),qualify:r4(t.qual/acc.n),pos:[r4(t.pos[0]/acc.n)]};}
+  const d=new Date();
+  state.snapshots.push({label:Object.keys(state.locked).length+"r",time:(d.getMonth()+1)+"/"+d.getDate()+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2),nsim:acc.n,t:lite});
+  if(state.snapshots.length>40)state.snapshots.shift();
+  saveState();
+}
+
+/* NAV / RENDER ROUTER */
+let curTab="odds";
+function switchTab(t){curTab=t;$$(".sec").forEach(s=>s.classList.toggle("on",s.id===t));$$("#bnav button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));rerenderTab(t);window.scrollTo({top:0});}
+function rerenderTab(t){({odds:renderOdds,groups:renderGroups,bracket:renderBracket,results:renderResultsTab,trends:renderTrends})[t]&&({odds:renderOdds,groups:renderGroups,bracket:renderBracket,results:renderResultsTab,trends:renderTrends})[t]();}
+function rerender(){rerenderTab(curTab);if($("#teamov").classList.contains("on"))renderTeam();if($("#setov").classList.contains("on"))renderSettings();}
+
+/* RUN */
+function doRun(){const N=+$("#nsim").value;const btn=$("#runbtn");btn.disabled=true;btn.textContent="…";
+  setTimeout(()=>runMC(N,acc=>{results=acc;acc.n=acc.n;saveResults();takeSnapshot(acc);btn.disabled=false;btn.textContent="▶ Run";rerender();toast(N.toLocaleString()+" tournaments simulated");}),20);}
+
+/* INIT */
+loadState();fillTeamSel();bindSettings();
+$$("#bnav button").forEach(b=>b.onclick=()=>switchTab(b.dataset.t));
+$("#runbtn").onclick=doRun;
+$("#gear").onclick=()=>{$("#setov").classList.add("on");renderSettings();};
+$("#setback").onclick=()=>$("#setov").classList.remove("on");
+$("#teamback").onclick=()=>$("#teamov").classList.remove("on");
+$("#teamsel").onchange=renderTeam;
+$("#histmetric").onchange=renderTrends;$("#histscope").onchange=renderTrends;$("#histteam").onchange=renderTrends;
+$("#clearres").onclick=()=>{if(confirm("Clear all group results?")){state.locked={};saveState();renderResults();toast("Group results cleared");}};
+$("#clearko").onclick=()=>{if(confirm("Clear all knockout picks?")){state.lockedKO={};saveState();renderKnockout();toast("Knockout picks cleared");}};
+$("#clearhist").onclick=()=>{if(confirm("Delete all snapshots?")){state.snapshots=[];saveState();renderTrends();}};
+renderOdds();updateSyncUI();
+</script>
+
+<!-- ============ FIREBASE SYNC (module) ============ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  STEP 1 — PASTE YOUR FIREBASE CONFIG BETWEEN THE BRACES BELOW.  ║
+   ║  (Firebase console → Project settings → Your apps → Web app)   ║
+   ║  Leave it as-is to run without sync (local-only).              ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+const FIREBASE_CONFIG = {
+  apiKey: "PASTE_API_KEY_HERE",
+  authDomain: "PASTE_PROJECT.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
+};
+/* ── nothing below needs editing ── */
+
+const S = window.Sync;
+const configured = FIREBASE_CONFIG.apiKey && !/PASTE/.test(FIREBASE_CONFIG.apiKey);
+if(!configured){ S.status="off"; S.fireStatus(); }
+else{
+  try{
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db = getFirestore(app);
+    let unsub=null, code=null, pendingWriteAt=0, applied=0;
+    S.enabled = true;
+    S.connect = (c)=>{
+      code=c; S.code=c;
+      if(unsub){unsub();unsub=null;}
+      if(!code){ S.status="nocode"; S.fireStatus(); return; }
+      S.status="connecting"; S.fireStatus();
+      const ref = doc(db,"wc26",code);
+      unsub = onSnapshot(ref,(snap)=>{
+        S.status="synced"; S.fireStatus();
+        if(!snap.exists()){ const st=window.getSyncState(); st.updatedAt=Date.now(); pendingWriteAt=st.updatedAt; setDoc(ref,st); return; }
+        const data=snap.data();
+        if(data.updatedAt && data.updatedAt===pendingWriteAt) return;     // our own echo
+        if(data.updatedAt && data.updatedAt<=applied) return;             // already seen
+        applied = data.updatedAt||Date.now();
+        window.applyRemote(data);
+      },(err)=>{ S.status="error"; S.errMsg=err.message; S.fireStatus(); });
+    };
+    S.push = (st)=>{ if(!code)return; st.updatedAt=Date.now(); pendingWriteAt=st.updatedAt; applied=st.updatedAt;
+      setDoc(doc(db,"wc26",code),st).catch(e=>{ S.status="error"; S.errMsg=e.message; S.fireStatus(); }); };
+    const saved = window.getSyncCode();
+    if(saved) S.connect(saved); else { S.status="nocode"; S.fireStatus(); }
+  }catch(e){ S.status="error"; S.errMsg=e.message; S.fireStatus(); }
+}
+</script>
+</body>
+</html>
